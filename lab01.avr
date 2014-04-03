@@ -1,0 +1,124 @@
+.include "m64def.inc"
+
+.def nL = r16
+.def nH = r17
+.def c = r18
+.def i = r19
+
+.macro mul2;
+mul @0, @2 ; al * bl
+movw @5:@4, r1:r0
+mul @1, @2 ; ah * bl
+add @5, r0
+mul @0, @3 ; bh * al
+add @5, r0
+.endmacro
+
+.cseg
+s: .DB '1', '2', '3', '4', '5', 0
+;s: .DB "12345"
+
+main:
+; pointer(2)+integer(2) = 4 bytes to store local variables,
+ldi r28, low(RAMEND-4)
+ldi r29, high(RAMEND-4)
+.def zero = r15 ; to store constant value 0
+
+; multiplication of two 2-byte unsigned numbers with the results of 2-bytes
+; all parameters are registers, @5:@4 should be in the form: rd+1:rd,
+; where d is the even number, and they are not r1 and r0
+; operation: (@5:@4) = (@1:@0)*(@3:@2)
+;.macro  r29, high(RAMEND-4)
+; Adjust stack pointer to point
+out SPH, r29
+; the new stack top.
+out SPL, r28
+
+; function body of the main
+; char s[] = "12345"
+ldi ZL, low(s<<1)
+ldi ZH, high(s<<1)
+std Y+1, ZL
+std Y+2, ZH
+
+; prepare parameters for function call
+; r21:r20 keep the actual parameter s
+ldd r20, Y+1
+ldd r21, Y+2
+; call subroutine atio
+rcall atoi
+; get the return result
+std Y+1, r24
+std Y+2, r25
+end:
+rjmp end
+; end of main function()
+
+atoi:
+prologue:
+    push r29
+    push r28
+    in r28, SPL
+    in r29, SPH
+    sbiw r28:r29, 10 ; allocate some stack space
+    out SPH, r29
+    out SPL, r28
+    ;std Y+1, r24
+    ;std Y+2, r25
+
+atoi_core:
+    CLR nL
+    CLR nH
+    STD Y+3, nL
+    STD Y+4, nH
+    MOVW r30, r28
+    MOVW r30, r20
+    LPM c, Z
+    STD Y+5, c
+    LDI i, 1
+    STD Y+6, i
+loop:
+    LDD c, Y+5
+    CPI c, '0'                ; if Z < '0', break
+    BRLT exit
+    CPI c, ('9' + 1)                ; if 'Z' > '9', break
+    BRGE exit
+    LDI r30, LOW(10)
+    LDD nL, Y+3
+    LDD nH, Y+4
+    MUL nL, r30
+    MOVW r2, r0                        ; n *= 10
+    MUL nH, r30
+    ADD r3, r0
+    MOVW nL, r2
+    SUBI c, '0'
+    ADD nL, c                        ; n -= c
+    BRCC atoi_branch2
+    INC nH
+atoi_branch2:
+    STD Y+3, nL
+    STD Y+4, nH
+    MOVW r30, r20
+    LDD i, Y+6
+    ADD r30, i                        ; r31:r30 += i
+    BRCC atoi_branch
+    INC r31
+atoi_branch:
+    LPM c, Z                        ; c = *r31:r30
+    STD Y+5, c
+    LDD i, Y+6
+    INC i                            ; i++
+    STD Y+6, i
+    RJMP loop
+exit:
+    MOVW r24, nL
+epilogue:
+    ldd nH, Y+2 ; stores the return value of atoi
+    ldd nL, Y+1
+    adiw r28:r29, 10 ; de-allocates our space
+    out SPH, r29
+    out SPL, r28
+    pop r28
+    pop r29
+    ret
+
