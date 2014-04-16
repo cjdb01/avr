@@ -23,6 +23,8 @@
 .def counter4=r21
 .def counter5=r22
 .def ZERO=r23
+.def input=r24
+
 ;setting up the interrupt vector
 jmp RESET
 jmp Default ; IRQ0 Handler
@@ -113,6 +115,18 @@ pop r28
 pop r29
 reti                     ; Return from the interrupt.
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;; MYLES READ THIS BIT PLEASE!!
+;;;;;;;;;;;;;;;;;;;;;;; Ok so I (Chris) have written my stuff below main
+;;;;;;;;;;;;;;;;;;;;;;; I'm not sure where to put it because I don't have
+;;;;;;;;;;;;;;;;;;;;;;; the board, but an rjmp to my section will suffice
+;;;;;;;;;;;;;;;;;;;;;;; this rjmp should be in main, and needs to be
+;;;;;;;;;;;;;;;;;;;;;;; labelled `retmain', as I rjmp back to `retmain'.
+;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;; I think you will also need to insert `mov input 0xFF'
+;;;;;;;;;;;;;;;;;;;;;;; directly after Andrew's part is completed.
+
 main:
 ldi temp, 0b00000010     ; 
 out TCCR0, temp          ; Prescaling value=8  ;256*8/7.3728( Frequency of the clock 7.3728MHz, for the overflow it should go for 256 times)
@@ -120,3 +134,10 @@ ldi temp, 1<<TOIE0       ; =278 microseconds
 out TIMSK, temp          ; T/C0 interrupt enable
 sei                      ; Enable global interrupt
 loop: rjmp loop          ; loop forever
+
+
+get_input:
+	dec input
+	brne delay
+	in input, PINB
+	rjmp retmain
