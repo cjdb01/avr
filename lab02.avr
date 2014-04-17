@@ -27,8 +27,8 @@
 
 ;setting up the interrupt vector
 jmp RESET
-jmp Default ; IRQ0 Handler
-jmp Default ; IRQ1 Handler
+jmp EXT_INT0 ; IRQ0 Handler
+jmp EXT_INT1 ; IRQ1 Handler
 jmp Default ; IRQ2 Handler
 jmp Default ; IRQ3 Handler
 jmp Default ; IRQ4 Handler
@@ -136,8 +136,43 @@ sei                      ; Enable global interrupt
 loop: rjmp loop          ; loop forever
 
 
-get_input:
-	dec input
-	brne delay
-	in input, PINB
-	rjmp retmain
+EXT_INT0: 
+push r29                 ; Save all conflict registers in the prologue.
+push r28
+in r25, SREG
+push r25                 ; Prologue ends.
+
+inc nxtCounter           ; Add 1 bit to the right location of 4bits
+ldi temp, 1
+mul temp, nxtCounter
+add nxtChar, temp
+
+cpi nxtCounter, 4
+brne exit
+
+
+resetInput: ;put in the value queue <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  
+            ldi nxtCounter, 0
+            ldi nxtChar, 0
+            ldd temp, queueSize   ;states there is an input in the stack
+            inc temp
+            ldd queueSize, temp
+            rjmp exit
+
+EXT_INT1: 
+push r29                 ; Save all conflict registers in the prologue.
+push r28
+in r25, SREG
+push r25                 ; Prologue ends.
+
+inc nxtCounter
+cpi nxtCounter, 4
+brne exit
+
+rjmp resetInput
+
+;get_input:
+;	dec input
+;	brne delay
+;	in input, PINB
+;	rjmp retmain
