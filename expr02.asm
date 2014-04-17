@@ -4,3 +4,6 @@
 ; Interrupts!
 
 .include "m64def.inc"
+
+poll:
+
