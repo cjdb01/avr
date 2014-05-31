@@ -104,8 +104,10 @@ print_data_loop:
 .endmacro ; print_data
 
 .macro ldi_low_reg
+	push temp2
     ldi temp2, @1
     mov @0, temp2
+	pop temp2
 .endmacro ; ldi_low_reg
 
 .macro cpi_low_reg
