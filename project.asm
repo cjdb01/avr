@@ -17,6 +17,10 @@
 .def mask       = r8
 .def press      = r9
 .def ten        = r10 ; r10 holds the value 10
+;.def counter = r11    ; used for timer
+;.def counter2 = r12   ; used for timer
+;.def counter3 = r13   ; used for timer
+.def counter4 = r14   ; used for timer
 .def temp       = r16
 .def temp2      = r17
 .def delay_high = r18
@@ -111,8 +115,10 @@ print_data_loop:
 .endmacro ; ldi_low_reg
 
 .macro cpi_low_reg
+    push temp2
     mov temp2, @0
     cpi temp2, @1
+    pop temp2
 .endmacro ; cpi_low_reg
 
 .macro store_char
@@ -240,6 +246,20 @@ timer_0:
     cpi counter2, 35
     brne timer_0_second_loop
     
+    rcall update         ; every second, update
+
+    ldi_low_reg counter,0    ; clear counter value after 3597 interrupts gives us one second
+    ldi_low_reg counter2,0
+    ldi_low_reg counter3,0
+
+    cpi_low_reg counter4,30             ; every 30 seconds
+    brne timer_0_counter30
+
+    rcall NEXT_LEVEL
+
+    ldi_low_reg counter4, 0
+    rjmp timer_0_epilogue
+
 timer_0_not_second:
     inc counter
     rjmp timer_0_epilogue
@@ -251,12 +271,21 @@ timer_0_second_loop:
     inc counter2
     ldi counter3, 0
 
+timer_0_counter30:
+    inc counter4
+    rjmp timer_0_epilogue
+
 timer_0_epilogue:
     pop r24
     out SREG, r24
     pop r28
     reti
 
+========MOVE THIS TO THE CORRECT LOCATION WHEN COMPLETE======
+NEXT_LEVEL:
+
+ret
+========MOVE THIS TO THE CORRECT LOCATION WHEN COMPLETE======
     
 ; ---------- Start of display core ----------
 

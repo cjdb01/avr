@@ -18,10 +18,24 @@
 .include "m64def.inc"
 .def temp = r16
 .def speed = r17
-.def counter = r18
-.def counter2 = r19
-.def counter3 = r20
-.def counter4 = r21
+.def counter = r11
+.def counter2 = r12
+.def counter3 = r13
+.def counter4 = r14
+
+.macro ldi_low_reg
+    push temp
+    ldi temp, @1
+    mov @0, temp
+    pop temp
+.endmacro ; ldi_low_reg
+
+.macro cpi_low_reg
+    push temp
+    mov temp, @0
+    cpi temp, @1
+    pop temp
+.endmacro ; cpi_low_reg
 
 ; Setup the interrupt vectors so that the task will be given
 ; to the necessary subroutine when there is an interrupt
@@ -65,32 +79,34 @@ push r24                 ; Prologue ends.
 
 /**** a counter for 3597 is needed to get one second-- Three counters are used in this example **************/                                          
                          ; 3597  (1 interrupt 278microseconds therefore 3597 interrupts needed for 1 sec)
-;cpi counter, 97          ; counting for 97
-cpi counter, 2
+;cpi_low_reg counter, 97          ; counting for 97
+cpi_low_reg counter, 2
 brne counter97
  
-;cpi counter2, 35         ; counting for 35
-cpi counter2, 2
+;cpi_low_reg counter2, 35         ; counting for 35
+cpi_low_reg counter2, 2
 brne counter35          ; jumping into count 100
 
-;cpi counter3, 100
+;cpi_low_reg counter3, 100
 ;brne counter100          ; jumping into count 100
 
 ; 23588
 
 rcall DISPLAY         ; every second, update
 
-ldi counter,0    ; clear counter value after 3597 interrupts gives us one second
-ldi counter2,0
-ldi counter3,0
+ldi_low_reg counter,0    ; clear counter value after 3597 interrupts gives us one second
+ldi_low_reg counter2,0
+ldi_low_reg counter3,0
 
-;cpi counter4,30             ; every 30 seconds
-cpi counter4,3
+;cpi_low_reg counter4,30             ; every 30 seconds
+cpi_low_reg counter4,3
 brne counter30
+
+; 94258
 
 rcall NEXT_LEVEL
 
-ldi counter4, 0
+ldi_low_reg counter4, 0
 rjmp exit
 
 counter97:
@@ -107,11 +123,11 @@ counter30:
 
 counter35:
     inc counter3 ; counting 100 for every 35 times := 35*100 := 3500
-    ;cpi counter3,100 
-    cpi counter3,10 
+    ;cpi_low_reg counter3,100 
+    cpi_low_reg counter3,10 
     brne exit
     inc counter2
-    ldi counter3,0
+    ldi_low_reg counter3,0
     rjmp exit
 
 
@@ -130,10 +146,10 @@ out SPH, temp
 ldi temp, low(RAMEND)
 out SPL, temp
 ldi speed,0            
-ldi counter,0            
-ldi counter2,0
-ldi counter3,0
-ldi counter4,0
+ldi_low_reg counter,0            
+ldi_low_reg counter2,0
+ldi_low_reg counter3,0
+ldi_low_reg counter4,0
 ldi temp,255
 out DDRC,temp
 rjmp main
