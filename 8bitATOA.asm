@@ -11,12 +11,15 @@ string: .byte 1
 ;=============DEFS=============
 ;==============================
 
+.def TEN = r17
 .def temp = r18
-.def result = r19
-.def num1 = r20
-;.def num1_lo = r20
-;.def num1_hi = r21
-.def TEN = r22
+;.def result = r19
+.def result_lo = r19
+.def result_hi = r20
+;.def num1 = r21
+.def num1_lo = r21
+.def num1_hi = r22
+
 
 ;================================
 ;=============MACROS=============
@@ -38,20 +41,13 @@ mul @0, @3 ; bh * al
 add @5, r0
 .endmacro
 
-
-
-
-
-
-
-
 .def rd1l = R0 ; LSB 16-bit-number to be divided
 .def rd1h = R1 ; MSB 16-bit-number to be divided
 .def rd1u = R2 ; interim register
 .def rd2  = R3 ; 8-bit-number to divide with
 .def rel  = R4 ; LSB result
 .def reh  = R5 ; MSB result
-.def rmp  = R16; multipurpose register for loading
+; temp ; multipurpose register for loading
 ;
 .cseg
 .org 0
@@ -63,13 +59,12 @@ start:
 ; Load the test numbers to the appropriate registers
 ;
 .macro divideFunction
-    ldi rmp,@0 ; number to be divided
-    mov rd1h,rmp
-    mov rd1l,rmp
-    ldi rmp,@1 ; number to be divided with
-    mov rd2,rmp
+    mov rd1h,@0
+    mov rd1l,@1
+    mov temp,@2 ; number to be divided with
+    mov rd2,temp
 ;
-; Divide rd1h:rd1l by rd2
+; Divide rd1h:rd1l  by rd2
 ;
 div8:
     clr rd1u ; clear interim register
@@ -259,10 +254,15 @@ ldi r29, high(RAMEND-4)
 ldi num1, low(42)
 ;ldi num1_lo, low(1000)
 ;ldi num1_hi, high(1000)
-ldi result, 0
+;ldi num2_lo, low(250)
+;ldi num2_hi, high(250)
+;ldi result_lo, 0
+;ldi result_hi, 0
+
+;divideFunction num1_lo, num1_hi, num2_lo, num2_hi
 
 ;itoa num1
-rjmp itoa_function
+
 ;itoa num1, num2
 
 ; prepare parameters for function call
@@ -279,76 +279,66 @@ rjmp itoa_function
 ;; end of main function()
 
 
+// allocated 6 bits of space, then write each number, decreasing the data pointer
+
+; char* itoa(int num, char* str)
+; {
+;     int i = 0;
+;  
+;     /* Handle 0 explicitely, otherwise empty string is printed for 0 */
+;     if (num == 0)
+;     {
+;         str[i++] = '0';
+;         str[i] = '\0';
+;         return str;
+;     }
+;     while (num != 0)
+;     {
+;         str[i++] = (num % 10) + '0';
+;         num = num / 10;
+;     }
+;  
+;     str[i] = '\0'; // Append string terminator
+;  
+;     // Reverse the string
+;     reverse(str, i);
+;  
+;     return str;
+; }
+
+
 itoa_function:
 prologue:
-    push r29
-    push r28
-    in r28, SPL
-    in r29, SPH
-    sbiw r28:r29, 10 ; allocate some stack space
-    out SPH, r29
-    out SPL, r28
     push temp
     push result
-
-    push r16
-    push r17
-
-    .def num2 = r16
-
-    ;.def num2_lo = r16
-    ;.def num2_hi = r17
 
 
 itoa_core:
 ldi XH, high(string)
 ldi XL, low(string)
+adiw XL:XH, 6 ; move data pointer 6 chars to the right
 
 LDI TEN, LOW(10)
-ldi num2, 1 ; int num2 = 1;
-
-loop1: ;     while (num2 > num)
-
-    mul num2, TEN                   ; num2 *= 10;
-    mov num2, r0
-
-    CP num2, num1                ; num2 > num
-    breq loop1
-    brlt loop1
-
-    div num2, TEN, result     ; num2 = num2 / 10;
-    mov num2, result
 
 loop2: ;     while (num != 0)
 
-    CPI num2, 1                     ; if num2 < 1, break
+    CPI num1, 1                     ; if num < 1, break
     BRLT exit
     
-    div num1, num2, result    ; int result = num / num2;
-
+    mod num1, TEN, result           ; str[i++] = (num % 10) + '0';
     ldi temp, '0'
     add result, temp
-    st X+, result
+    st -X, result
 
-    mod num1, num2, result          ; num = num % num2;
+    div num1, TEN, result           ; num = num / 10;
     mov num1, result
-
-    div num2, TEN, result     ; num2 = num2 / 10;
-    mov num2, result
 
     rjmp loop2
 
 exit:
     ldi temp, 0      ;     str[i] = '\0'; // Append string terminator
-    st X+, temp
+    st -X, temp
 epilogue:
-    push r17
-    push r16
     pop result
     pop temp
-    adiw r28:r29, 10 ; de-allocates our space
-    out SPH, r29
-    out SPL, r28
-    pop r28
-    pop r29
     ret

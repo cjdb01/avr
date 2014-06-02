@@ -11,17 +11,19 @@ string: .byte 1
 ;=============DEFS=============
 ;==============================
 
-.def TEN = r10
-.def temp = r18
-;.def result = r19
-.def result_lo = r19
-.def result_hi = r20
-;.def num1 = r21
-.def num1_lo = r21
-.def num1_hi = r22
+.def TEN = r20
+.def temp = r21
+.def result_lo = r16
+.def result_hi = r17
+.def num1_lo = r18
+.def num1_hi = r19
 
-.def num2_lo = r16
-.def num2_hi = r17
+;.def result = r19
+;.def result_lo = r19
+;.def result_hi = r20
+;.def num1 = r21
+;.def num1_lo = r21
+;.def num1_hi = r22
 
 
 ;================================
@@ -123,6 +125,9 @@ divend:
     pop temp
 .endmacro
 
+.macro div16
+.endmacro
+
 ;=============MOD=============
 
 ; num1 % num2 = result
@@ -136,6 +141,9 @@ modloop:
     sub @2, @1
     rjmp modloop
 modend:
+.endmacro
+
+.macro mod16
 .endmacro
 
 ;=============ITOA_C=============
@@ -257,12 +265,10 @@ ldi r29, high(RAMEND-4)
 ;ldi num1, low(42)
 ldi num1_lo, low(1000)
 ldi num1_hi, high(1000)
-ldi num2_lo, low(250)
-ldi num2_hi, high(250)
 ldi result_lo, 0
 ldi result_hi, 0
 
-divideFunction num1_lo, num1_hi, num2_lo, num2_hi
+;divideFunction num1_lo, num1_hi, num2_lo, num2_hi
 
 ;itoa num1
 
@@ -283,3 +289,72 @@ divideFunction num1_lo, num1_hi, num2_lo, num2_hi
 
 
 // allocated 6 bits of space, then write each number, decreasing the data pointer
+
+; char* itoa(int num, char* str)
+; {
+;     int i = 0;
+;  
+;     /* Handle 0 explicitely, otherwise empty string is printed for 0 */
+;     if (num == 0)
+;     {
+;         str[i++] = '0';
+;         str[i] = '\0';
+;         return str;
+;     }
+;     while (num != 0)
+;     {
+;         str[i++] = (num % 10) + '0';
+;         num = num / 10;
+;     }
+;  
+;     str[i] = '\0'; // Append string terminator
+;  
+;     // Reverse the string
+;     reverse(str, i);
+;  
+;     return str;
+; }
+
+
+itoa_function:
+prologue:
+    push temp
+    push result_lo
+    push result_hi
+
+itoa_core:
+ldi XH, high(string)
+ldi XL, low(string)
+adiw XL:XH, 6 ; move data pointer 6 chars to the right
+
+LDI TEN, LOW(10)
+
+loop2: ;     while (num != 0)
+
+    CPI num1_hi, 0                     ; if num < 1, break
+    brne after_check
+    CPI num1_lo, 1
+    BRLT exit
+
+after_check:
+    
+    mod16 num1_lo, num1_hi, TEN, result_lo, result_hi           ; str[i++] = (num % 10) + '0';
+    ldi temp, '0'
+    adiw r26:r27, 0           ; this works
+    adiw r16:r17, 0           ; this doesn't
+    st -X, result_lo
+    st -X, result_hi
+
+    div16 num1_lo, num1_hi, TEN, result_lo, result_hi           ; num = num / 10;
+    movw num1_hi:num1_lo, result_hi:result_lo
+
+    rjmp loop2
+
+exit:
+    ldi temp, 0      ;     str[i] = '\0'; // Append string terminator
+    st -X, temp
+epilogue:
+    pop result_hi
+    pop result_lo
+    pop temp
+    ret
