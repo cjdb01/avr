@@ -100,7 +100,11 @@ ldi_low_reg counter3,0
 
 ;cpi_low_reg counter4,30             ; every 30 seconds
 cpi_low_reg counter4,3
-brne counter30
+;brne counter30
+brlt counter30              ; if counter4 < 30
+    
+cpi_low_reg counter4,31             ; display for 3 seconds, then reset
+brge timer_0_game_over_sleep              ; if counter4 > 30 
 
 ; 94258
 
@@ -113,13 +117,16 @@ counter97:
     inc counter   ; if it is not a second, increment the counter
     rjmp exit
 
-counter100:
-    inc counter3
-    rjmp exit
-
 counter30:
     inc counter4
     rjmp exit
+
+timer_0_game_over_sleep:
+    inc counter4
+    cpi counter4, 35
+    breq RESET
+    rjmp exit
+
 
 counter35:
     inc counter3 ; counting 100 for every 35 times := 35*100 := 3500

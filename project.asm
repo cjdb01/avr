@@ -189,6 +189,11 @@ reset:
     ; clear variables
     clr press
     clr zero
+
+    ldi_low_reg counter,0            
+    ldi_low_reg counter2,0
+    ldi_low_reg counter3,0
+    ldi_low_reg counter4,0
     
     ldi temp, low(RAMEND)
     out SPL,  temp
