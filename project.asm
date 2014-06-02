@@ -253,7 +253,10 @@ timer_0:
     ldi_low_reg counter3,0
 
     cpi_low_reg counter4,30             ; every 30 seconds
-    brne timer_0_counter30
+    brlt timer_0_counter30              ; if counter4 < 30
+    
+    cpi_low_reg counter4,31             ; display for 3 seconds, then reset
+    brge timer_0_game_over_sleep              ; if counter4 > 30 
 
     rcall NEXT_LEVEL
 
@@ -273,6 +276,12 @@ timer_0_second_loop:
 
 timer_0_counter30:
     inc counter4
+    rjmp timer_0_epilogue
+
+timer_0_game_over_sleep:
+    inc counter4
+    cpi counter4, 35
+    breq reset
     rjmp timer_0_epilogue
 
 timer_0_epilogue:
@@ -731,6 +740,8 @@ game_over:
     ldi_low_reg count, length
     print_data
     rcall lcd_wait_busy
+
+    ldi counter4, 31     ; after 3 seconds, rjmp to reset
 temp_exit:
     rjmp temp_exit
 ;    rjmp auto_collision_exit
