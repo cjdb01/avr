@@ -189,6 +189,7 @@ reset:
     ; clear variables
     clr press
     clr zero
+	clr r15
 
     ldi_low_reg counter,0            
     ldi_low_reg counter2,0
@@ -285,9 +286,9 @@ timer_0_counter30:
 
 timer_0_game_over_sleep:
     inc counter4
-    cpi counter4, 35
-    breq reset
-    rjmp timer_0_epilogue
+    cpi_low_reg counter4, 35
+    brne timer_0_epilogue
+    ldi_low_reg r15, 1
 
 timer_0_epilogue:
     pop r24
@@ -295,11 +296,11 @@ timer_0_epilogue:
     pop r28
     reti
 
-========MOVE THIS TO THE CORRECT LOCATION WHEN COMPLETE======
+;========MOVE THIS TO THE CORRECT LOCATION WHEN COMPLETE======
 NEXT_LEVEL:
 
 ret
-========MOVE THIS TO THE CORRECT LOCATION WHEN COMPLETE======
+;========MOVE THIS TO THE CORRECT LOCATION WHEN COMPLETE======
     
 ; ---------- Start of display core ----------
 
@@ -746,9 +747,8 @@ game_over:
     print_data
     rcall lcd_wait_busy
 
-    ldi counter4, 31     ; after 3 seconds, rjmp to reset
-temp_exit:
-    rjmp temp_exit
+    ldi_low_reg counter4, 31     ; after 3 seconds, rjmp to reset
+	ret
 ;    rjmp auto_collision_exit
     
 main:
@@ -760,6 +760,15 @@ main:
     ldi ZL, low(panel_row_0) ; point Y at the string
     ldi ZH, high(panel_row_0);recall that we must multiply any Program code label address
                                     ; by 2 to get the correct location
+
+	cpi_low_reg r15, 1
+	brne main2
+
+
+
+	jmp reset
+
+main2:
     ldi_low_reg count, length
 
     print_data
@@ -772,3 +781,6 @@ main:
     
     ;out PORTC, score_low
     rjmp main
+
+update:
+	ret
