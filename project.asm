@@ -156,6 +156,26 @@ on_top_exit:
     nop
 .endmacro ; on_top
 
+.macro get_points
+    ld temp, Z
+
+    cpi temp, 'O'
+	brne update_shift
+
+	ldi temp, ' '
+	st Z, temp
+	adiw Z, 1
+	push ZL
+	push ZH
+	ldi ZL, low(level)
+	ldi ZH, high(level)
+	ld temp2, Z
+	add score_low, temp2
+	adc score_high, zero
+	pop ZH
+	pop ZL
+.endmacro
+
 ; -------------------- Interrupts --------------------
 jmp reset
 jmp reset            ; irq0
@@ -182,9 +202,9 @@ reset:
     mov ten, temp
 
     store_string panel_row_0, 'L', ':', '0', ' ', 'C', ':', '3', '|'
-    store_string racer_row_0, 'C', ' ', ' ', '=', 'O', 'O', 'O', ' '
+    store_string racer_row_0, 'C', ' ', ' ', ' ', 'O', 'O', 'O', ' '
     store_string panel_row_1, 'S', ':', ' ', ' ', ' ', ' ', '0', '|'
-    store_string racer_row_1, 208, ' ', ' ', ' ', ' ', '-', ' ', ' ' ; 208
+    store_string racer_row_1, ' ', ' ', ' ', ' ', ' ', ' ', 'S', ' ' ; 208
 
     ; clear variables
     clr press
@@ -205,7 +225,7 @@ reset:
     out DDRD, temp
     ser temp
     out DDRC, temp
-    out PORTC, temp
+    ;out PORTC, temp
     
     ldi ZL, low(not_top)
     ldi ZH, high(not_top)
@@ -224,6 +244,11 @@ reset:
 	ldi temp, 3
 	st Z, temp
 
+	ldi ZL, low(level)
+	ldi ZH, high(level)
+	ldi temp, 1
+	st Z, temp
+
     clr score_low
     clr score_high
 	clr temp
@@ -235,6 +260,12 @@ reset:
 	clr YH
 	clr ZL
 	clr ZH
+
+	ldi temp, 0b00000011     ; 
+	out TCCR0, temp          ; Prescaling value=8  ;256*8/7.3728( Frequency of the clock 7.3728MHz, for the overflow it should go for 256 times)
+	ldi temp, 1<<TOIE0       ; =278 microseconds
+	out TIMSK, temp          ; T/C0 interrupt enable
+	sei
 
     jmp main
 
@@ -751,23 +782,6 @@ game_over:
 	ret
 ;    rjmp auto_collision_exit
     
-main:
-    ldi_low_reg mask, init_column_mask
-    clr column
-    rcall lcd_init
-    out TIMSK, temp          ; T/C0 interrupt enable
-    lsl count
-    ldi ZL, low(panel_row_0) ; point Y at the string
-    ldi ZH, high(panel_row_0);recall that we must multiply any Program code label address
-                                    ; by 2 to get the correct location
-
-	cpi_low_reg r15, 1
-	brne main2
-
-
-
-	jmp reset
-
 main2:
     ldi_low_reg count, length
 
@@ -778,9 +792,109 @@ main2:
     rcall lcd_wait_busy
     
     rcall key_press
-    
-    ;out PORTC, score_low
+	out PORTC, score_low
     rjmp main
 
 update:
+	push temp
+	push temp2
+    ldi ZL, low(racer_row_0)
+	ldi ZH, high(racer_row_0)
+	
+    get_points
+    clr count
+update_shift:
+    ld temp, Z+
+    cpi temp, 'O'
+	breq update_shift_obstacle
+	cpi temp, 'S'
+	breq update_shift_powerup
+	rjmp update_shift_condition
+
+update_shift_obstacle:
+	ld temp2, Z
+	sbiw Z, 2
+	push temp
+	ld temp, Z
+	cpi temp, 'C'
+	breq life_loss
+	pop temp
+	st Z+, temp
+	st Z+, temp2
+    rjmp update_shift_condition
+    
+update_shift_powerup:
+	ld temp2, Z
+	cpi_low_reg count, 4
+	brne update_shift_powerup2
+	jmp powerloss
+update_shift_powerup2:
+	cpi_low_reg count, 12
+	breq powerloss
+	sbiw Z, 2
+	push temp
+	ld temp, Z
+	cpi temp, 'C'
+	pop temp
+	st Z+, temp
+	st Z+, temp2
+	rjmp update_shift_condition
+
+powerboost:
+	pop temp
+	ldi YL, low(level)
+    ldi YH, high(level)
+    ld temp, Y
+    
+    mul temp, ten
+    add score_low, r1
+    adc score_high, r0
+	rjmp update_shift_condition
+
+update_shift_condition:
+    inc count
+    cpi_low_reg count, 8
+    breq update_shift_condition_row_0
+    cpi_low_reg count, 16
+    breq update_exit
+    rjmp update_shift
+
+update_shift_condition_row_0:
+    ldi ZL, low(racer_row_1)
+    ldi ZH, high(racer_row_1)
+    
+    get_points
+    rjmp update_shift
+
+life_loss:
+	pop temp
+	ldi ZL, low(lives)
+    ldi ZH, high(lives)
+    ld temp, Z
+    
+    dec temp
+    brne life_loss2
+	jmp game_over
+life_loss2:
+    st Z, temp
+    
+    ldi temp2, '0'
+    add temp2, temp
+    
+    ldi ZL, low(panel_row_0)
+    ldi ZH, high(panel_row_0)
+    adiw Z, 6
+    st Z, temp2
+    rjmp update_exit
+
+powerloss:
+	ldi temp2, ' '
+	sbiw Z, 1
+	st Z, temp2
+	rjmp update_shift_condition
+    
+update_exit:
+	pop temp2
+	pop temp
 	ret
+    
