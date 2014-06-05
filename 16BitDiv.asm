@@ -1,20 +1,21 @@
-;.DEF LSB = R2 ; LeastSigBit 16-bit-number to be divided = row
-;.DEF MSB = R3 ; MostSigBit 16-bit-number to be divided = column
-;.DEF temp = R4 ; interim register = temp
+;.DEF LSB = R2 ; LeastSigBit 16-bit-number to be divided = row - R6
+;.DEF MSB = R3 ; MostSigBit 16-bit-number to be divided = column - R7
+;.DEF temp = R4 ; interim register = temp - R16
+;.DEF loader = R8; multipurpose register for loading = temp2 - R17
+
 .DEF divN = R11 ; 8-bit-number to divide with
-.DEF lsbRes = R12 ; LSB result
-.DEF msbRes = R13 ; MSB result
-;.DEF loader = R8; multipurpose register for loading = temp2
+.DEF result_lo = R12 ; LSB result
+.DEF result_hi = R13 ; MSB result
+
 .CSEG
 .ORG 0
 bigNumDiv:
-push R0
-push R1
-push R2
-push R3
-push R4
-push R5
-push R16
+push row
+push column
+push temp
+push divN
+push temp2
+
 	ldi temp2,0x00 ; LestSigBit to be divided
 	mov column,temp2
 	ldi temp2, 0x00 ; MostSigBit to be divided
@@ -24,9 +25,9 @@ push R16
 ; Divide column:row by divN
 div8:
 	clr temp ; clear temp register
-	clr msbRes ; clear result (the result registers
-	clr lsbRes ; are also used to count to 16 for the
-	inc lsbRes ; division steps, is set to 1 at start)
+	clr result_hi ; clear result (the result registers
+	clr result_lo ; are also used to count to 16 for the
+	inc result_lo ; division steps, is set to 1 at start)
 ; Start Div loop
 div8a:
 	clc ; clear carry-bit
@@ -43,17 +44,18 @@ div8b:
 div8c:
 	clc ; clear carry-bit, resulting bit is a 0
 div8d:
-	rol lsbRes ; rotate carry-bit into result registers
-	rol msbRes
+	rol result_lo ; rotate carry-bit into result registers
+	rol result_hi
 	brcc div8a ; as long as zero rotate out of the result
 	 ; registers: go on with the division loop
 endBigNumDiv:
 
+	
 	;Grab result before the pops!
-	pop R0
-	pop R1
-	pop R2
-	pop R3
-	pop R4
-	pop R5
-	pop R16
+	pop temp2
+	;pop result_hi
+	;pop result_lo
+	pop divN
+	pop temp
+	pop column
+	pop row
