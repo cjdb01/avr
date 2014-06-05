@@ -242,18 +242,22 @@ epilogue:
 main:
 ;ldi integer, 1
 ; pointer(2)+integer(2) = 4 bytes to store local variables,
-ldi r28, low(RAMEND-4)
-ldi r29, high(RAMEND-4)
+ldi temp, low(RAMEND)
+out SPL, temp
+ldi temp, high(RAMEND)
+out SPH, temp
 
-;ldi num1, low(42)
-ldi_low_reg row, low(4567)
-ldi_low_reg column, high(4567)
+ldi_low_reg row, low(75)
+ldi_low_reg column, high(75)
 ldi_low_reg result_lo, 0
 ldi_low_reg result_hi, 0
 
-rcall bigNumDiv
+;rcall bigNumDiv
 
-;rcall itoa_function
+rcall itoa_function
+
+main_loop:
+rjmp main_loop
 
 ;itoa num1
 
@@ -316,11 +320,20 @@ adiw XL:XH, 6 ; move data pointer 6 chars to the right
 
 ldi_low_reg TEN, LOW(10)
 
+; Handle 0 explicitely, otherwise empty string is printed for 0
+CPI_low_reg column, 0
+brne loop2
+CPI_low_reg row, 0
+brne loop2
+ldi temp, '0'
+st -X, temp
+rjmp exit
+
 loop2: ;     while (num != 0)
 
-    CPI_low_reg column, 0                     ; if num < 1, break
+    CPI_low_reg row, 0                     ; if num < 1, break
     brne after_check
-    CPI_low_reg row, 1
+    CPI_low_reg column, 1
     BRLT exit
 
 after_check:
@@ -357,7 +370,7 @@ epilogue:
 ;.DEF loader = R8; multipurpose register for loading = temp2 - R17
 
 bigNumDiv:
-/*
+
 push row
 push column
 push temp
@@ -408,6 +421,5 @@ endBigNumDiv:
     pop temp
     pop column
     pop row
-    */
+    
     ret
-
