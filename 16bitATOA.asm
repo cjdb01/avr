@@ -133,7 +133,7 @@ ldi XH, high(string)
 ldi XL, low(string)
 adiw XL:XH, 7 ; move data pointer 6 chars to the right
 
-ldi_low_reg TEN, LOW(10)
+;ldi_low_reg TEN, LOW(10)
 
 ; Handle 0 explicitely, otherwise empty string is printed for 0
 CPI_low_reg count, 0
