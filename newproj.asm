@@ -8,6 +8,8 @@
 .include "m64def.inc"
 
 ; -------------------- Register definitions --------------------
+.def mul_low     = r0  ; lsb of products
+.def mul_high    = r1  ; msb of products
 .def zero        = r2  ; can't be r0 because r1:r0 is used for multiplication
                        ; and zero should be constant most of the time
 .def count       = r3  ; a counting variable
@@ -191,12 +193,12 @@ timer_0:
     ldi_low_reg counter2,0
     ldi_low_reg counter3,0
 
-    cpi_low_reg counter4,30 ; every 30 seconds
-    brlt timer_0_counter30 ; if counter4 < 30
+    cpi_low_reg seconds,30 ; every 30 seconds
+    brlt timer_0_counter30 ; if seconds < 30
     
     rcall level_up
 
-    ldi_low_reg counter4, 0
+    ldi_low_reg seconds, 0
     rjmp timer_0_epilogue
 
 timer_0_not_second:
@@ -211,7 +213,7 @@ timer_0_second_loop:
     ldi counter3, 0
 
 timer_0_counter30:
-    inc counter4
+    inc seconds
 
 timer_0_epilogue:
     pop r24
@@ -561,7 +563,38 @@ reset:
 
 ; -------------------- main --------------------
 main:
+    ldi_low_reg mask, init_column_mask
+    clr column
+    rcall lcd_init
+    lsl count
     
+    ; load the data to be printed
+    ldi ZL, low(panel_row_0)
+    ldi ZH, high(panel_row_0)
+    
+    ; convert score from int to string
+    rcall itoa
+    
+    ; print to screen
+    ldi_low_reg count, length
+    rcall print_data
+    rcall print_newline
+    ; don't forget the null char!
+    adiw Z, 1
+    
+    ; print line 2, null char can be ignored here
+    ldi_low_reg count, length
+    rcall print_data
+    rcall lcd_wait_busy
+    
+    ; get user input
+    rcall key_press
+    
+    ; output the current score
+    out PORTC, score_low
+    
+    ; and repeat
+    rjmp main
 
 ; -------------------- Functions --------------------
 print_newline:
@@ -628,13 +661,18 @@ move_vertical:
     ldi temp, ' '
     st Z, temp
     
+    ; there are 17 memory cells between the up
+    ; position and the down position
+    ; if temp2 > 0 then we're moving down (moving forward in memory)
+    ; otherwise we're moving up (moving backward in memory)
     cpi temp2, 0
     brge move_vertical_up
-    sbiw, Z, 17
+    sbiw Z, 17
     rjmp move_vertical_store
 move_vertical_up:
-    adiw, Z, 17
+    adiw Z, 17
 move_vertical_store:
+    ; find out if we're going to drive into something and resolve accordingly
     rcall collision_check
     ldi temp, 'C'
     st Z, temp
@@ -643,6 +681,344 @@ move_vertical_store:
 ; moves the car horisontally
 ; direction dictated by temp2
 move_horisontal:
-    on_top
+    ; get the distance from the start of the lane
+    ldi ZL, low(position)
+    ldi ZH, high(position)
+    ld temp, Z
+    add temp, temp2 ; move the position, then store it
+    st Z, temp
+    sub temp, temp2
     
-    http://www.avr-asm-tutorial.net/avr_en/calc/DIV8E.html
+    ; have Z pointing to the start of the
+    ; lane the car is in
+    rcall on_top
+    ; move the to the car's actual position
+    add ZL, temp
+    adc ZH, zero
+    
+    ; prepare to shift the car (let it move halfway)
+    ldi temp, ' '
+    st Z, temp
+    
+    ; shift the Z pointer accordingly
+    add ZL, temp2
+    adc ZH, temp2
+    
+    ; find out if we're going to drive into something and resolve accordingly
+    rcall collision_check
+    ldi temp, 'C'
+    st Z, temp
+    ret
+    
+; checks if the car is about to drive into an obstacle or a power up and resolves accordingly
+collision_check:
+    ; prologue
+    push ZL
+    push ZH
+    push temp
+    push temp2
+    
+    
+    ;body
+    ; get what's currently being pointed to in memory
+    ld temp, Z
+    
+    cpi temp, 'O' ; O for obstacle
+    breq check_obstacle_collision
+    cpi temp, 'S' ; S for default_powerup
+    breq check_default_powerup_collision
+check_obstacle_collision:
+    rcall resolve_obstacle_collision
+    rjmp collision_check_epilogue
+
+check_default_powerup_collision:
+    rcall resolve_default_powerup_collision
+
+collision_check_epilogue:
+    pop temp2
+    pop temp
+    pop ZH
+    pop ZL
+
+; resolves what happens if we crash into an obstacle
+resolve_obstacle_collision:
+    ldi ZL, low(lives)
+    ldi ZH, high(lives)
+    ld temp, Z
+    
+    ; decrement lives
+    ; if lives == 0, game over!
+    dec temp
+    brne resolve_obstacle_collision_part_2
+    rcall game_over
+    
+resolve_obstacle_collision_part_2:
+    st Z, temp
+    
+    ; store the lives in memory as an ascii value
+    ldi temp2, '0'
+    add temp, temp2
+    
+    ldi ZL, low(panel_row_0)
+    ldi ZH, high(panel_row_0)
+    adiw Z, 6
+    st Z, temp2
+    
+    ; run the motor
+    ldi temp, 75
+    out PORTE, temp
+    rcall reset_level
+    ret
+
+; resolves what happens if we drive into a default powerup
+resolve_default_powerup_collision:
+    ; get the level
+    ldi ZL, low(level)
+    ldi ZH, high(level)
+    ld temp, Z
+    
+    ; default powerup: socre += 10 * level
+    mul temp, ten
+    add score_low, mul_low
+    adc score_high, mul_high
+    
+    ret
+    
+game_over:
+    store_string panel_row_0, 'G', 'a', 'm', 'e', ' ', 'o', 'v', 'e'
+    store_string racer_row_0, 'r', '!', ' ', ' ', ' ', ' ', ' ', ' '
+    store_char 0 ; mustn't forget the null char!
+    
+    ; preserve the ascii score!
+    ; pushes it on to the stack, to be retrieved later
+    adiw Z, 2
+    clr temp2
+game_over_score_preservation:
+    cpi temp2, 6
+    breq game_over_part_2
+    ld temp, Z
+    push temp
+    rjmp game_over_score_preservation
+    
+game_over_part_2:
+    store_string panel_row_1, 'S', 'c', 'o', 'r', 'e', ':', ' ', ' '
+    store_string racer_row_1, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
+    store_char 0
+    
+    ; pop the score off
+    sbiw Z, 5
+    ldi temp2, 6
+game_over_score_restoration:
+    pop temp
+    st -Z, temp
+    dec temp2
+    brne game_over_score_restoration
+    
+    ; game over now!
+    ; wait until something is done
+game_over_end:
+    rjmp game_over_end
+    ret
+
+; takes an integer and converts it to a string    
+itoa:
+    ; prologue
+    push temp
+    push score_low
+    push score_high
+    push result_low
+    push result_high
+    
+    ; body
+    ldi XL, low(panel_row_1)
+    ldi XH, high(panel_row_1)
+    adiw XL:XH, 7 ; move data pointer 6 chars to the right
+    
+    ; handle zero explicitly, otherwise empty string is printed for 0
+    cpi_low_reg score_high, 0
+    brne itoa_loop
+    cpi_low_reg score_low, 0
+    brne itoa_loop
+    ldi temp, '0'
+    st -X, temp
+    
+    rjmp itoa_epilogue
+    
+itoa_loop: ; while (num != 0)
+    cpi_low_reg score_low, 0 ; if num < 1, break
+    brne itoa_after_check
+    cpi_low_reg score_high, 1
+    brlt itoa_epilogue
+    
+itoa_after_check:
+    rcall bigNumDiv
+    
+    ldi temp, '0'
+    add divN, temp
+    st -X, divN
+    
+    movw score_high:score_low, result_high:result_low
+    
+    rjmp itoa_loop
+    
+itoa_epilogue:
+    pop result_high
+    pop result_low
+    pop score_high
+    pop score_low
+    pop temp
+    ret
+    
+; divides a 16-bit number by an 8-bit number
+; code from http://www.avr-asm-tutorial.net/avr_en/calc/DIV8E.html
+bigNumDiv:
+    push score_low
+    push score_high
+    push temp
+    clr divN
+    push temp2
+    mov divN,ten
+; Divide score_high:score_low by divN
+div8:
+    clr temp ; clear temp register
+    clr result_high ; clear result (the result registers
+    clr result_low ; are also used to score_high to 16 for the
+    inc result_low ; division steps, is set to 1 at start)
+; Start Div loop
+div8a:
+    clc ; clear carry-bit
+    rol score_low ; rotate the next-upper bit of the number
+    rol score_high ; to the interim register (multiply by 2)
+    rol temp
+    brcs div8b ; a one has rolled left, so subtract
+    cp temp,divN ; Division result 1 or 0?
+    brcs div8c ; jump over subtraction, if smaller
+div8b:
+    sub temp,divN; subtract number to divide with
+    sec ; set carry-bit, result is a 1
+    rjmp div8d ; jump to shift of the result bit
+div8c:
+    clc ; clear carry-bit, resulting bit is a 0
+div8d:
+    rol result_low ; rotate carry-bit into result registers
+    rol result_high
+    brcc div8a ; as long as score_low rotate out of the result
+     ; registers: go on with the division loop
+endBigNumDiv:
+    mov divN, temp
+
+    ;Grab result before the pops!
+    pop temp2
+    pop temp
+    pop score_high
+    pop score_low
+    
+    ret
+    
+; updates the game
+update:
+    ret
+
+; resets the level
+reset_level:
+	ret
+    
+; random code provided by CSE
+InitRandom:
+    push r16 ; save conflict register
+
+    in r16, TCNT1L ; Create random seed from time of timer 1
+    sts RAND,r16
+    sts RAND+2,r16
+    in r16,TCNT1H
+    sts RAND+1, r16
+    sts RAND+3, r16
+
+    pop r16 ; restore conflict register
+    ret
+
+GetRandom:
+    push r0 ; save conflict registers
+    push r1
+    push r17
+    push r18
+    push r19
+    push r20
+    push r21
+    push r22
+
+    clr r22 ; remains zero throughout
+
+    ldi r16, low(RAND_C) ; set original value to be equal to C
+    ldi r17, BYTE2(RAND_C)
+    ldi r18, BYTE3(RAND_C)
+    ldi r19, BYTE4(RAND_C)
+
+    ; calculate A*X + C where X is previous random number.  A is 3 bytes.
+    lds r20, RAND
+    ldi r21, low(RAND_A)
+    mul r20, r21 ; low byte of X * low byte of A
+    add r16, r0
+    adc r17, r1
+    adc r18, r22
+
+    ldi r21, byte2(RAND_A)
+    mul r20, r21  ; low byte of X * middle byte of A
+    add r17, r0
+    adc r18, r1
+    adc r19, r22
+
+    ldi r21, byte3(RAND_A)
+    mul r20, r21  ; low byte of X * high byte of A
+    add r18, r0
+    adc r19, r1
+
+    lds r20, RAND+1
+    ldi r21, low(RAND_A)
+    mul r20, r21  ; byte 2 of X * low byte of A
+    add r17, r0
+    adc r18, r1
+    adc r19, r22
+
+    ldi r21, byte2(RAND_A)
+    mul r20, r21  ; byte 2 of X * middle byte of A
+    add r18, r0
+    adc r19, r1
+
+    ldi r21, byte3(RAND_A)
+    mul r20, r21  ; byte 2 of X * high byte of A
+    add r19, r0
+
+    lds r20, RAND+2
+    ldi r21, low(RAND_A)
+    mul r20, r21  ; byte 3 of X * low byte of A
+    add r18, r0
+    adc r19, r1
+
+    ldi r21, byte2(RAND_A)
+    mul r20, r21  ; byte 2 of X * middle byte of A
+    add r19, r0
+
+    lds r20, RAND+3
+    ldi r21, low(RAND_A)	
+    mul r20, r21  ; byte 3 of X * low byte of A
+    add r19, r0
+
+    sts RAND, r16 ; store random number
+    sts RAND+1, r17
+    sts RAND+2, r18
+    sts RAND+3, r19
+
+    mov r16, r19  ; prepare result (bits 30-23 of random number X)
+    lsl r18
+    rol r16
+
+    pop r22 ; restore conflict registers
+    pop r21 
+    pop r20
+    pop r19
+    pop r18
+    pop r17
+    pop r1
+    pop r0
+    ret
