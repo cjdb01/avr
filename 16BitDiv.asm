@@ -1,10 +1,10 @@
-.DEF LSB = R2 ; LeastSigBit 16-bit-number to be divided
-.DEF MSB = R3 ; MostSigBit 16-bit-number to be divided
-.DEF temp = R4 ; interim register
-.DEF divN = R5 ; 8-bit-number to divide with
-.DEF lsbRes = R6 ; LSB result
-.DEF msbRes = R7 ; MSB result
-.DEF loader = R8; multipurpose register for loading
+;.DEF LSB = R2 ; LeastSigBit 16-bit-number to be divided = row
+;.DEF MSB = R3 ; MostSigBit 16-bit-number to be divided = column
+;.DEF temp = R4 ; interim register = temp
+.DEF divN = R11 ; 8-bit-number to divide with
+.DEF lsbRes = R12 ; LSB result
+.DEF msbRes = R13 ; MSB result
+;.DEF loader = R8; multipurpose register for loading = temp2
 .CSEG
 .ORG 0
 bigNumDiv:
@@ -15,13 +15,13 @@ push R3
 push R4
 push R5
 push R16
-	ldi loader,0x00 ; LestSigBit to be divided
-	mov MSB,loader
-	ldi loader, 0x00 ; MostSigBit to be divided
-	mov LSB,loader
-	ldi loader,0x00 ; 8 bit num to be divided with
-	mov divN,loader
-; Divide MSB:LSB by divN
+	ldi temp2,0x00 ; LestSigBit to be divided
+	mov column,temp2
+	ldi temp2, 0x00 ; MostSigBit to be divided
+	mov row,temp2
+	ldi temp2,0x00 ; 8 bit num to be divided with
+	mov divN,temp2
+; Divide column:row by divN
 div8:
 	clr temp ; clear temp register
 	clr msbRes ; clear result (the result registers
@@ -30,8 +30,8 @@ div8:
 ; Start Div loop
 div8a:
 	clc ; clear carry-bit
-	rol LSB ; rotate the next-upper bit of the number
-	rol MSB ; to the interim register (multiply by 2)
+	rol row ; rotate the next-upper bit of the number
+	rol column ; to the interim register (multiply by 2)
 	rol temp
 	brcs div8b ; a one has rolled left, so subtract
 	cp temp,divN ; Division result 1 or 0?
