@@ -160,8 +160,9 @@ on_top_exit:
     ld temp, Z
 
     cpi temp, 'O'
-    brne update_shift
-
+    breq get_points2
+    jmp update_shift
+get_points2:
     ldi temp, ' '
     st Z, temp
     adiw Z, 1
