@@ -11,29 +11,10 @@ string: .byte 1
 ;=============DEFS=============
 ;==============================
 
-;.def TEN = r20
-;.def temp = r21
-;.def result_lo = r16
-;.def result_hi = r17
 
 .DEF divN = R11 ; 8-bit-number to divide with
-
-;.def num1_lo = r18
-;.def num1_hi = r19
-;.DEF divN = R11 ; 8-bit-number to divide with
-
-
-;.def result = r19
-;.def result_lo = r19
-;.def result_hi = r20
-;.def num1 = r21
-;.def num1_lo = r21
-;.def num1_hi = r22
-
 .DEF result_lo = R12 ; LSB result
 .DEF result_hi = R13 ; MSB result
-
-
 .def zero       = r2 ; can't be r0 because r1:r0 is used for multiplication
 .def count      = r3
 .def score_high = r4 ; low registers chosen because they will be less popular for frequent usage
@@ -43,9 +24,6 @@ string: .byte 1
 .def mask       = r8
 .def press      = r9
 .def ten        = r10 ; r10 holds the value 10
-;.def counter = r11    ; used for timer
-;.def counter2 = r12   ; used for timer
-;.def counter3 = r13   ; used for timer
 .def counter4 = r14   ; used for timer
 .def temp       = r16
 .def temp2      = r17
@@ -70,169 +48,6 @@ string: .byte 1
     cpi temp2, @1
     pop temp2
 .endmacro ; cpi_low_reg
-
-
-;=============MUL2=============
-
-; multiplication of two 2-byte unsigned numbers with the results of 2-bytes
-; all parameters are registers, @5:@4 should be in the form: rd+1:rd,
-; where d is the even number, and they are not r1 and r0
-; operation: (@5:@4) = (@1:@0)*(@3:@2)
-
-.macro mul2 ; a * b
-mul @0, @2 ; al * bl
-movw @5:@4, r1:r0
-mul @1, @2 ; ah * bl
-add @5, r0
-mul @0, @3 ; bh * al
-add @5, r0
-.endmacro
-
-;=============DIV=============
-
-; num1 / num2 = result
-; num1 : @0, num2 : @1, result : @2
-.macro div ; a /b
-    push temp
-
-    MOV temp, @0
-    ldi @2, 0
-
-divloop:
-    CP temp, @1                ; if temp < num2 loop : return temp
-    BRLT divend
-    sub temp, @1
-    inc @2
-    rjmp divloop
-divend:
-    pop temp
-.endmacro
-
-.macro div16
-.endmacro
-
-;=============MOD=============
-
-; num1 % num2 = result
-; num1 : @0, num2 : @1, result : @2
-.macro mod ; a /b
-    MOV @2, @0
-
-modloop:
-    CP @2, @1
-    BRLT modend
-    sub @2, @1
-    rjmp modloop
-modend:
-.endmacro
-
-.macro mod16
-.endmacro
-
-;=============ITOA_C=============
-
-; char* itoa(int num, char* str)
-; {
-;     int i = 0;
-;  
-;     /* Handle 0 explicitely, otherwise empty string is printed for 0 */
-;     if (num == 0)
-;     {
-;         str[i++] = '0';
-;         str[i] = '\0';
-;         return str;
-;     }
-;     
-;
-;     // num2 may overflow in its final check if num is large enough
-;     while (num2 > num)
-;     {
-;         num2 *= 10;
-;     }
-;     num2 = num2 / 10;
-;     
-;     while (num2 != 0)
-;     {
-;         str[i++] = (num / num2) + '0';
-;         num = num % num2;
-;         num2 = num2 / 10;
-;     }
-;  
-;     str[i] = '\0'; // Append string terminator
-;  
-;     // Reverse the string
-;     reverse(str, i);
-;  
-;     return str;
-; }
-
-;=============ITOA_AVR=============
-
-; num1 : @0, num2 : @1
-.macro itoa
-
-prologue:
-    push r29
-    push r28
-    in r28, SPL
-    in r29, SPH
-    sbiw r28:r29, 10 ; allocate some stack space
-    out SPH, r29
-    out SPL, r28
-    push temp
-    push result
-
-itoa_core:
-ldi XH, high(string)
-ldi XL, low(string)
-
-ldi_low_reg TEN, LOW(10)
-ldi @1, 1 ; int num2 = 1;
-
-loop1: ;     while (num2 > num)
-
-    mul @1, TEN                   ; num2 *= 10;
-    mov @1, r0
-
-    CP @1, @0                ; num2 > num
-    breq loop1
-    brlt loop1
-
-    div @1, TEN, result     ; num2 = num2 / 10;
-    mov @1, result
-
-loop2: ;     while (num != 0)
-
-    CPI @1, 1                     ; if num2 < 1, break
-    BRLT exit
-    
-    div @0, @1, result    ; int result = num / num2;
-
-    ldi temp, '0'
-    add result, temp
-    st X+, result
-
-    mod @0, @1, result          ; num = num % num2;
-    mov @0, result
-
-    div @1, TEN, result     ; num2 = num2 / 10;
-    mov @1, result
-
-    rjmp loop2
-
-exit:
-    ldi temp, 0      ;     str[i] = '\0'; // Append string terminator
-    st X+, temp
-epilogue:
-    pop result
-    pop temp
-    adiw r28:r29, 10 ; de-allocates our space
-    out SPH, r29
-    out SPL, r28
-    pop r28
-    pop r29
-
-.endmacro
 
 
 ;==============================
