@@ -749,6 +749,7 @@ main:
     brne main2
     jmp reset
 main2:
+	rcall itoa_function
     ldi_low_reg count, length
 
     print_data
@@ -769,22 +770,22 @@ main2:
 itoa_function:
 prologue:
     push temp
-    push zero
-    push count
+    push score_low
+    push score_high
     push result_lo
     push result_hi
 
 itoa_core:
-ldi XH, high(string)
-ldi XL, low(string)
+ldi XH, high(panel_row_1)
+ldi XL, low(panel_row_1)
 adiw XL:XH, 7 ; move data pointer 6 chars to the right
 
 ;ldi_low_reg TEN, LOW(10)
 
 ; Handle 0 explicitely, otherwise empty string is printed for 0
-CPI_low_reg count, 0
+CPI_low_reg score_high, 0
 brne loop2
-CPI_low_reg zero, 0
+CPI_low_reg score_low, 0
 brne loop2
 ldi temp, '0'
 st -X, temp
@@ -792,9 +793,9 @@ rjmp exit
 
 loop2: ;     while (num != 0)
 
-    CPI_low_reg zero, 0                     ; if num < 1, break
+    CPI_low_reg score_low, 0                     ; if num < 1, break
     brne after_check
-    CPI_low_reg count, 1
+    CPI_low_reg score_high, 1
     BRLT exit
 
 after_check:
@@ -805,55 +806,55 @@ after_check:
     add divN, temp
     st -X, divN
 
-    movw count:zero, result_hi:result_lo
+    movw score_high:score_low, result_hi:result_lo
 
     rjmp loop2
 
 exit:
-    ldi temp, 0      ;     str[i] = '\0'; // Append string terminator
-    st -X, temp
+    ;ldi temp, 0      ;     str[i] = '\0'; // Append string terminator
+    ;st -X, temp
 epilogue:
-    push count
-    push zero
-    pop result_hi
-    pop result_lo
-    pop temp
+	pop result_hi
+	pop result_lo
+	pop score_high
+	pop score_low
+	pop temp
     ret
 
 
 ;=============DIV16===========
 
-;.DEF LSB = R2 ; LeastSigBit 16-bit-number to be divided = zero - R6
-;.DEF MSB = R3 ; MostSigBit 16-bit-number to be divided = count - R7
+;.DEF LSB = R2 ; LeastSigBit 16-bit-number to be divided = score_low - R6
+;.DEF MSB = R3 ; MostSigBit 16-bit-number to be divided = score_high - R7
 ;.DEF temp = R4 ; interim register = temp - R16
 ;.DEF loader = R8; multipurpose register for loading = temp2 - R17
 
 bigNumDiv:
 
-push zero
-push count
+push score_low
+push score_high
 push temp
 ;push divN
 clr divN
 push temp2
 
     ;ldi temp2,0x00 ; LestSigBit to be divided
-    ;mov count,temp2
+    ;mov score_high,temp2
     ;ldi temp2, 0x00 ; MostSigBit to be divided
-    ;mov zero,temp2
+    ;mov score_low,temp2
     ldi temp2,0x0A ; 8 bit num to be divided with
     mov divN,temp2
-; Divide count:zero by divN
+; Divide score_high:score_low by divN
 div8:
     clr temp ; clear temp register
     clr result_hi ; clear result (the result registers
-    clr result_lo ; are also used to count to 16 for the
+    clr result_lo ; are also used to score_high to 16 for the
     inc result_lo ; division steps, is set to 1 at start)
 ; Start Div loop
 div8a:
     clc ; clear carry-bit
-    rol zero ; rotate the next-upper bit of the number
-    rol count ; to the interim register (multiply by 2)
+    rol score_low ; rotate the next-upper bit of the number
+    rol score_high ; to the interim register (multiply by 2)
     rol temp
     brcs div8b ; a one has rolled left, so subtract
     cp temp,divN ; Division result 1 or 0?
@@ -867,7 +868,7 @@ div8c:
 div8d:
     rol result_lo ; rotate carry-bit into result registers
     rol result_hi
-    brcc div8a ; as long as zero rotate out of the result
+    brcc div8a ; as long as score_low rotate out of the result
      ; registers: go on with the division loop
 endBigNumDiv:
     mov divN, temp
@@ -878,8 +879,8 @@ endBigNumDiv:
     ;pop result_lo
     ;pop divN
     pop temp
-    pop count
-    pop zero
+    pop score_high
+    pop score_low
     
     ret
 
