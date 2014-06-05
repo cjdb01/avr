@@ -20,7 +20,7 @@ push R16
 	ldi temp2, 0x00 ; MostSigBit to be divided
 	mov row,temp2
 	ldi temp2,0x00 ; 8 bit num to be divided with
-	mov divN,loader
+	mov divN,temp2
 ; Divide column:row by divN
 div8:
 	clr temp ; clear temp register
