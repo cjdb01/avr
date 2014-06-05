@@ -20,7 +20,7 @@ push temp2
 	mov column,temp2
 	ldi temp2, 0x00 ; MostSigBit to be divided
 	mov row,temp2
-	ldi temp2,0x00 ; 8 bit num to be divided with
+	ldi temp2,0x0A ; 8 bit num to be divided with
 	mov divN,temp2
 ; Divide column:row by divN
 div8:

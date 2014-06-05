@@ -1,186 +1,413 @@
-/****  ExampleW.3.1    ******************************************/
-         ; This example demonstrates on how the switching can be 
-         ; implemented using the external interrupt.        
-         ; The Motor is switched on and off using switches PB0 PB1
-         ;*******************************************************
-         ; connections:
-         ;       PB0 (input pin) -> PD0 (External Interrupt 0)
-         ;       PB1 (input pin) -> PD1 (External Interrupt 1)
-         ;       Mot             -> PC0
-         ; External interrupts ::refer ATMega64DataSheet page 89
-         ;NOTE: External interrupts occur based on SREG...i flag
-         ;
-         ;**********************
-         ;
-         ;      
-         ; 
-/****************************************************************/
 .include "m64def.inc"
-.def temp = r16
-.def speed = r17
-.def counter = r11
-.def counter2 = r12
-.def counter3 = r13
-.def counter4 = r14
+
+.dseg
+.org 0x100
+string: .byte 1
+
+.cseg
+.org 0x0
+
+;==============================
+;=============DEFS=============
+;==============================
+
+;.def TEN = r20
+;.def temp = r21
+;.def result_lo = r16
+;.def result_hi = r17
+
+.DEF divN = R11 ; 8-bit-number to divide with
+
+;.def num1_lo = r18
+;.def num1_hi = r19
+;.DEF divN = R11 ; 8-bit-number to divide with
+
+
+;.def result = r19
+;.def result_lo = r19
+;.def result_hi = r20
+;.def num1 = r21
+;.def num1_lo = r21
+;.def num1_hi = r22
+
+.DEF result_lo = R12 ; LSB result
+.DEF result_hi = R13 ; MSB result
+
+
+.def zero       = r2 ; can't be r0 because r1:r0 is used for multiplication
+.def count      = r3
+.def score_high = r4 ; low registers chosen because they will be less popular for frequent usage
+.def score_low  = r5
+.def row        = r6
+.def column     = r7
+.def mask       = r8
+.def press      = r9
+.def ten        = r10 ; r10 holds the value 10
+;.def counter = r11    ; used for timer
+;.def counter2 = r12   ; used for timer
+;.def counter3 = r13   ; used for timer
+.def counter4 = r14   ; used for timer
+.def temp       = r16
+.def temp2      = r17
+
+
+
+;================================
+;=============MACROS=============
+;================================
+
 
 .macro ldi_low_reg
-    push temp
-    ldi temp, @1
-    mov @0, temp
-    pop temp
+    push temp2
+    ldi temp2, @1
+    mov @0, temp2
+    pop temp2
 .endmacro ; ldi_low_reg
 
 .macro cpi_low_reg
-    push temp
-    mov temp, @0
-    cpi temp, @1
-    pop temp
+    push temp2
+    mov temp2, @0
+    cpi temp2, @1
+    pop temp2
 .endmacro ; cpi_low_reg
 
-; Setup the interrupt vectors so that the task will be given
-; to the necessary subroutine when there is an interrupt
 
-jmp RESET
+;=============MUL2=============
 
-jmp Default ; IRQ0 Handler
-jmp Default ; IRQ1 Handler
-jmp Default ; IRQ2 Handler
-jmp Default ; IRQ3 Handler
-jmp Default ; IRQ4 Handler
-jmp Default ; IRQ5 Handler
-jmp Default ; IRQ6 Handler
-jmp Default ; IRQ7 Handler
-jmp Default ; Timer2 Compare Handler
-jmp Default ; Timer2 Overflow Handler
-jmp Default ; Timer1 Capture Handler
-jmp Default ; Timer1 CompareA Handler
-jmp Default ; Timer1 CompareB Handler
-jmp Default ; Timer1 Overflow Handler
-jmp Default ; Timer0 Compare Handler
-jmp Timer0  ; Timer0 Overflow Handler
+; multiplication of two 2-byte unsigned numbers with the results of 2-bytes
+; all parameters are registers, @5:@4 should be in the form: rd+1:rd,
+; where d is the even number, and they are not r1 and r0
+; operation: (@5:@4) = (@1:@0)*(@3:@2)
 
-Default: reti
+.macro mul2 ; a * b
+mul @0, @2 ; al * bl
+movw @5:@4, r1:r0
+mul @1, @2 ; ah * bl
+add @5, r0
+mul @0, @3 ; bh * al
+add @5, r0
+.endmacro
 
-Timer1:                  ; Prologue starts.
-push r29                 ; Save all conflict registers in the prologue.
-push r28
-in r24, SREG
-push r24                 ; Prologue ends.
+;=============DIV=============
 
-rjmp exit
+; num1 / num2 = result
+; num1 : @0, num2 : @1, result : @2
+.macro div ; a /b
+    push temp
 
+    MOV temp, @0
+    ldi @2, 0
 
+divloop:
+    CP temp, @1                ; if temp < num2 loop : return temp
+    BRLT divend
+    sub temp, @1
+    inc @2
+    rjmp divloop
+divend:
+    pop temp
+.endmacro
 
-Timer0:                  ; Prologue starts.
-push r29                 ; Save all conflict registers in the prologue.
-push r28
-in r24, SREG
-push r24                 ; Prologue ends.
+.macro div16
+.endmacro
 
-/**** a counter for 3597 is needed to get one second-- Three counters are used in this example **************/                                          
-                         ; 3597  (1 interrupt 278microseconds therefore 3597 interrupts needed for 1 sec)
-;cpi_low_reg counter, 97          ; counting for 97
-cpi_low_reg counter, 2
-brne counter97
- 
-;cpi_low_reg counter2, 35         ; counting for 35
-cpi_low_reg counter2, 2
-brne counter35          ; jumping into count 100
+;=============MOD=============
 
-;cpi_low_reg counter3, 100
-;brne counter100          ; jumping into count 100
+; num1 % num2 = result
+; num1 : @0, num2 : @1, result : @2
+.macro mod ; a /b
+    MOV @2, @0
 
-; 23588
+modloop:
+    CP @2, @1
+    BRLT modend
+    sub @2, @1
+    rjmp modloop
+modend:
+.endmacro
 
-rcall DISPLAY         ; every second, update
+.macro mod16
+.endmacro
 
-ldi_low_reg counter,0    ; clear counter value after 3597 interrupts gives us one second
-ldi_low_reg counter2,0
-ldi_low_reg counter3,0
+;=============ITOA_C=============
 
-;cpi_low_reg counter4,30             ; every 30 seconds
-cpi_low_reg counter4,3
-;brne counter30
-brlt counter30              ; if counter4 < 30
+; char* itoa(int num, char* str)
+; {
+;     int i = 0;
+;  
+;     /* Handle 0 explicitely, otherwise empty string is printed for 0 */
+;     if (num == 0)
+;     {
+;         str[i++] = '0';
+;         str[i] = '\0';
+;         return str;
+;     }
+;     
+;
+;     // num2 may overflow in its final check if num is large enough
+;     while (num2 > num)
+;     {
+;         num2 *= 10;
+;     }
+;     num2 = num2 / 10;
+;     
+;     while (num2 != 0)
+;     {
+;         str[i++] = (num / num2) + '0';
+;         num = num % num2;
+;         num2 = num2 / 10;
+;     }
+;  
+;     str[i] = '\0'; // Append string terminator
+;  
+;     // Reverse the string
+;     reverse(str, i);
+;  
+;     return str;
+; }
+
+;=============ITOA_AVR=============
+
+; num1 : @0, num2 : @1
+.macro itoa
+
+prologue:
+    push r29
+    push r28
+    in r28, SPL
+    in r29, SPH
+    sbiw r28:r29, 10 ; allocate some stack space
+    out SPH, r29
+    out SPL, r28
+    push temp
+    push result
+
+itoa_core:
+ldi XH, high(string)
+ldi XL, low(string)
+
+ldi_low_reg TEN, LOW(10)
+ldi @1, 1 ; int num2 = 1;
+
+loop1: ;     while (num2 > num)
+
+    mul @1, TEN                   ; num2 *= 10;
+    mov @1, r0
+
+    CP @1, @0                ; num2 > num
+    breq loop1
+    brlt loop1
+
+    div @1, TEN, result     ; num2 = num2 / 10;
+    mov @1, result
+
+loop2: ;     while (num != 0)
+
+    CPI @1, 1                     ; if num2 < 1, break
+    BRLT exit
     
-cpi_low_reg counter4,31             ; display for 3 seconds, then reset
-brge timer_0_game_over_sleep              ; if counter4 > 30 
+    div @0, @1, result    ; int result = num / num2;
 
-; 94258
+    ldi temp, '0'
+    add result, temp
+    st X+, result
 
-rcall NEXT_LEVEL
+    mod @0, @1, result          ; num = num % num2;
+    mov @0, result
 
-ldi_low_reg counter4, 0
-rjmp exit
+    div @1, TEN, result     ; num2 = num2 / 10;
+    mov @1, result
 
-counter97:
-    inc counter   ; if it is not a second, increment the counter
-    rjmp exit
+    rjmp loop2
 
-counter30:
-    inc counter4
-    rjmp exit
+exit:
+    ldi temp, 0      ;     str[i] = '\0'; // Append string terminator
+    st X+, temp
+epilogue:
+    pop result
+    pop temp
+    adiw r28:r29, 10 ; de-allocates our space
+    out SPH, r29
+    out SPL, r28
+    pop r28
+    pop r29
 
-timer_0_game_over_sleep:
-    inc counter4
-    cpi counter4, 35
-    breq RESET
-    rjmp exit
-
-
-counter35:
-    inc counter3 ; counting 100 for every 35 times := 35*100 := 3500
-    ;cpi_low_reg counter3,100 
-    cpi_low_reg counter3,10 
-    brne exit
-    inc counter2
-    ldi_low_reg counter3,0
-    rjmp exit
+.endmacro
 
 
-exit: 
-pop r24                  ; Epilogue starts;
-out SREG, r24            ; Restore all conflict registers from the stack.
-pop r28
-pop r29
-reti                     ; Return from the interrupt.
+;==============================
+;=============MAIN=============
+;==============================
 
-; interrupt place when Reset button is pressed
-RESET:
-
-ldi temp, high(RAMEND) ; Initialize stack pointer
-out SPH, temp
-ldi temp, low(RAMEND)
-out SPL, temp
-ldi speed,0            
-ldi_low_reg counter,0            
-ldi_low_reg counter2,0
-ldi_low_reg counter3,0
-ldi_low_reg counter4,0
-ldi temp,255
-out DDRC,temp
-rjmp main
-
-DISPLAY:
-
-asr speed ; divide num by 4
-asr speed
-; TODO: display the number
-ldi speed, 0 ; ret num to 0
-
-ret
-
-NEXT_LEVEL:
-
-ret
-
-
-
-; Main does not do anything in here  !!
 main:
-ldi temp, 0b00000010     ; 
-out TCCR0, temp          ; Prescaling value=8  ;256*8/7.3728( Frequency of the clock 7.3728MHz, for the overflow it should go for 256 times)
-ldi temp, 1<<TOIE0       ; =278 microseconds
-out TIMSK, temp          ; T/C0 interrupt enable
-sei                      ; Enable global interrupt
-loop: rjmp loop          ; loop forever
+;ldi integer, 1
+; pointer(2)+integer(2) = 4 bytes to store local variables,
+ldi r28, low(RAMEND-4)
+ldi r29, high(RAMEND-4)
+
+;ldi num1, low(42)
+ldi_low_reg row, low(4567)
+ldi_low_reg column, high(4567)
+ldi_low_reg result_lo, 0
+ldi_low_reg result_hi, 0
+
+rcall bigNumDiv
+
+;rcall itoa_function
+
+;itoa num1
+
+;itoa num1, num2
+
+; prepare parameters for function call
+; r21:r20 keep the actual parameter s
+;ldd r20, Y+1
+;ldd r21, Y+2
+;; call subroutine atio
+;;rcall atoi
+;; get the return result
+;std Y+1, r24
+;std Y+2, r25
+;end:
+;rjmp end
+;; end of main function()
+
+
+// allocated 6 bits of space, then write each number, decreasing the data pointer
+
+; char* itoa(int num, char* str)
+; {
+;     int i = 0;
+;  
+;     /* Handle 0 explicitely, otherwise empty string is printed for 0 */
+;     if (num == 0)
+;     {
+;         str[i++] = '0';
+;         str[i] = '\0';
+;         return str;
+;     }
+;     while (num != 0)
+;     {
+;         str[i++] = (num % 10) + '0';
+;         num = num / 10;
+;     }
+;  
+;     str[i] = '\0'; // Append string terminator
+;  
+;     // Reverse the string
+;     reverse(str, i);
+;  
+;     return str;
+; }
+
+
+itoa_function:
+prologue:
+    push temp
+    push row
+    push column
+    push result_lo
+    push result_hi
+
+itoa_core:
+ldi XH, high(string)
+ldi XL, low(string)
+adiw XL:XH, 6 ; move data pointer 6 chars to the right
+
+ldi_low_reg TEN, LOW(10)
+
+loop2: ;     while (num != 0)
+
+    CPI_low_reg column, 0                     ; if num < 1, break
+    brne after_check
+    CPI_low_reg row, 1
+    BRLT exit
+
+after_check:
+    rcall bigNumDiv
+
+    ;mod16 row, column, TEN, result_lo        ; str[i++] = (num % 10) + '0';
+    
+    ldi temp, '0'
+    add divN, temp
+    st -X, divN
+
+    ;div16 row, column, TEN, result_lo, result_hi        ; num = num / 10;
+    movw column:row, result_hi:result_lo
+
+    rjmp loop2
+
+exit:
+    ldi temp, 0      ;     str[i] = '\0'; // Append string terminator
+    st -X, temp
+epilogue:
+    push column
+    push row
+    pop result_hi
+    pop result_lo
+    pop temp
+    ret
+
+
+;=============DIV16===========
+
+;.DEF LSB = R2 ; LeastSigBit 16-bit-number to be divided = row - R6
+;.DEF MSB = R3 ; MostSigBit 16-bit-number to be divided = column - R7
+;.DEF temp = R4 ; interim register = temp - R16
+;.DEF loader = R8; multipurpose register for loading = temp2 - R17
+
+bigNumDiv:
+/*
+push row
+push column
+push temp
+;push divN
+clr divN
+push temp2
+
+    ;ldi temp2,0x00 ; LestSigBit to be divided
+    ;mov column,temp2
+    ;ldi temp2, 0x00 ; MostSigBit to be divided
+    ;mov row,temp2
+    ldi temp2,0x0A ; 8 bit num to be divided with
+    mov divN,temp2
+; Divide column:row by divN
+div8:
+    clr temp ; clear temp register
+    clr result_hi ; clear result (the result registers
+    clr result_lo ; are also used to count to 16 for the
+    inc result_lo ; division steps, is set to 1 at start)
+; Start Div loop
+div8a:
+    clc ; clear carry-bit
+    rol row ; rotate the next-upper bit of the number
+    rol column ; to the interim register (multiply by 2)
+    rol temp
+    brcs div8b ; a one has rolled left, so subtract
+    cp temp,divN ; Division result 1 or 0?
+    brcs div8c ; jump over subtraction, if smaller
+div8b:
+    sub temp,divN; subtract number to divide with
+    sec ; set carry-bit, result is a 1
+    rjmp div8d ; jump to shift of the result bit
+div8c:
+    clc ; clear carry-bit, resulting bit is a 0
+div8d:
+    rol result_lo ; rotate carry-bit into result registers
+    rol result_hi
+    brcc div8a ; as long as zero rotate out of the result
+     ; registers: go on with the division loop
+endBigNumDiv:
+    mov divN, temp
+
+    ;Grab result before the pops!
+    pop temp2
+    ;pop result_hi
+    ;pop result_lo
+    ;pop divN
+    pop temp
+    pop column
+    pop row
+    */
+    ret
+
