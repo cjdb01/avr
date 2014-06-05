@@ -1,4 +1,4 @@
-; Christopher Di Bella <chrisdb>, Andrew Peacock <apeaNNN>, Myles Cook <mcoo436>
+; Christopher Di Bella <chrisdb>, Andrew Peacock <apeaNNN>, Myles Cook <mdco436>
 ;
 ; project.asm
 ; COMP2121 race car project implementation
