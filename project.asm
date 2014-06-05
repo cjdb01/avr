@@ -871,9 +871,9 @@ powerboost:
 
 update_shift_condition:
     inc count
-    cpi_low_reg count, 8
+    cpi_low_reg count, 7
     breq update_shift_condition_row_0
-    cpi_low_reg count, 16
+    cpi_low_reg count, 14
     breq update_exit
     rjmp update_shift
 
@@ -881,7 +881,7 @@ update_shift_condition_row_0:
     ldi ZL, low(racer_row_1)
     ldi ZH, high(racer_row_1)
     
-;    get_points
+    get_points
     rjmp update_shift
 
 life_loss:
@@ -916,3 +916,4 @@ update_exit:
     pop temp
     ret
     
+
