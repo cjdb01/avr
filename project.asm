@@ -842,7 +842,6 @@ update_shift_obstacle2:
     pop temp
     st Z+, temp
     st Z+, temp2
-    rcall reset_level
     rjmp update_shift_condition
     
 update_shift_powerup:
@@ -907,6 +906,7 @@ life_loss2:
     ldi ZH, high(panel_row_0)
     adiw Z, 6
     st Z, temp2
+    rcall reset_level
     rjmp update_exit
 
 powerloss:
@@ -921,6 +921,22 @@ update_exit:
     ret
     
 reset_level:
+    push ZL
+    push ZH
+    push temp
+    
     store_string racer_row_0, 'C', ' ', ' ', ' ', ' ', ' ', ' ', ' '
     store_string racer_row_1, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
+    
+    ldi ZL, low(position)
+    ldi ZH, high(position)
+    st Z, zero
+    
+    ldi ZL, low(not_top)
+    ldi ZH, high(not_top)
+    st Z, zero
+    
+    pop temp
+    pop ZH
+    pop ZL
     ret
