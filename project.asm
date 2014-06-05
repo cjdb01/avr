@@ -44,9 +44,6 @@
 
     .org 0x103
     position: .byte 1
-    
-    .org 0x104
-    ammo: .byte 1
 
 ; -------------------- String data --------------------
     panel_row_0: .byte 8 ;"L:0 C:3|"
@@ -179,14 +176,16 @@ get_points2:
 
 ; -------------------- Interrupts --------------------
 jmp reset
+.org INT0addr
 jmp reset            ; irq0
-jmp default          ; irq1
-jmp default          ; irq2
-jmp default          ; irq3
-jmp default          ; irq4
-jmp default          ; irq5
-jmp default          ; irq6
-jmp default          ; irq7
+.org INT1addr
+jmp reset          ; irq1
+jmp reset          ; irq2
+jmp reset          ; irq3
+jmp reset          ; irq4
+jmp reset          ; irq5
+jmp reset          ; irq6
+jmp reset          ; irq7
 jmp default          ; timer2 compare
 jmp default          ; timer2 overflow
 jmp default          ; timer1 capture
@@ -203,9 +202,9 @@ reset:
     mov ten, temp
 
     store_string panel_row_0, 'L', ':', '0', ' ', 'C', ':', '3', '|'
-    store_string racer_row_0, 'C', ' ', ' ', ' ', 'O', 'O', 'O', ' '
+    store_string racer_row_0, 'C', ' ', 'S', ' ', 'O', 'O', 'O', ' '
     store_string panel_row_1, 'S', ':', ' ', ' ', ' ', ' ', '0', '|'
-    store_string racer_row_1, ' ', ' ', ' ', ' ', ' ', ' ', 'S', ' ' ; 208
+    store_string racer_row_1, ' ', ' ', 'S', ' ', ' ', ' ', 'S', ' ' ; 208
 
     ; clear variables
     clr press
@@ -234,10 +233,6 @@ reset:
 
     ldi ZL, low(position)
     ldi ZH, high(position)
-    st Z, zero
-
-    ldi ZL, low(ammo)
-    ldi ZH, high(ammo)
     st Z, zero
 
     ldi ZL, low(lives)
@@ -677,12 +672,6 @@ auto_collision_checking:
     breq obstacle_collision
     cpi temp2, 'S' ; S for powerup
     breq powerup_collision
-    cpi temp2, '-'
-    breq ammo_boost_1
-    cpi temp2, '='
-    breq ammo_boost_2
-    cpi temp2, 208
-    breq ammo_boost_3
     
     clr temp2
 
@@ -722,51 +711,9 @@ powerup_collision:
     ld temp, Z
     
     mul temp, ten
-    add score_low, r1
-    adc score_high, r0
+    add score_low, r0
+    adc score_high, r1
     rjmp auto_collision_exit
-    
-ammo_boost_3:
-    rcall ammo_load
-    cpi temp2, 253
-    brsh ammo_boost_2
-    lsl temp2
-    inc temp2
-    lsl temp2
-    inc temp2
-    lsl temp2
-    inc temp2
-    rcall ammo_store
-    rjmp auto_collision_exit
-ammo_boost_2:
-    rcall ammo_load
-    cpi temp2, 254
-    breq ammo_boost_1
-    lsl temp2
-    inc temp2
-    lsl temp2
-    inc temp2
-    rcall ammo_store
-    rjmp auto_collision_exit
-ammo_boost_1:
-    rcall ammo_load
-    cpi temp2, 255
-    breq auto_collision_exit
-    lsl temp2
-    inc temp2
-    rcall ammo_store
-    rjmp auto_collision_exit
-    
-ammo_load:
-    ldi ZL, low(ammo)
-    ldi ZH, high(ammo)
-    ld temp2, Z
-    ret
-    
-ammo_store:
-    st Z, temp2
-    out PORTC, temp2
-    ret
 
 game_over:
     store_string panel_row_0, 'G', 'a', 'm', 'e', ' ', 'o', 'v', 'e'
@@ -851,7 +798,9 @@ update_shift_powerup:
     jmp powerloss
 update_shift_powerup2:
     cpi_low_reg count, 12
-    breq powerloss
+	brne update_shift_powerup3
+    jmp powerloss
+update_shift_powerup3:
     sbiw Z, 2
     push temp
     ld temp, Z
@@ -868,8 +817,8 @@ powerboost:
     ld temp, Y
     
     mul temp, ten
-    add score_low, r1
-    adc score_high, r0
+    add score_low, r0
+    adc score_high, r1
     rjmp update_shift_condition
 
 update_shift_condition:
