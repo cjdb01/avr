@@ -208,7 +208,7 @@ reset:
     mov ten, temp
 
     store_string panel_row_0, 'L', ':', '1', ' ', 'C', ':', '3', '|'
-    store_string racer_row_0, 'C', ' ', ' ', ' ', ' ', ' ', ' ', ' '
+    store_string racer_row_0, 'C', ' ', ' ', ' ', ' ', 'O', ' ', ' '
     store_string panel_row_1, 'S', ':', ' ', ' ', ' ', ' ', '0', '|'
     store_string racer_row_1, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
 
@@ -284,7 +284,7 @@ timer_0:
     cpi counter, 97
     brne timer_0_not_second
     
-    cpi counter2, 35
+    cpi counter2, 10
     brne timer_0_second_loop
     
     rcall update ; every second, update
@@ -963,9 +963,9 @@ pop ZL
 
 update_shift_condition:
     inc count
-    cpi_low_reg count, 7
+    cpi_low_reg count, 8
     breq update_shift_condition_row_0
-    cpi_low_reg count, 14
+    cpi_low_reg count, 15
     breq update_exit
     rjmp update_shift
 
@@ -1020,6 +1020,54 @@ update_exit:
 	pop score_high
 	pop score_low
 
+	mov temp, divN
+
+	cpi temp, 5
+	brlt powerup_top
+	cpi temp, 10
+	brlt powerup_bottom
+	cpi temp, 35
+	brlt obstacle_top
+	cpi temp, 60
+	brlt obstacle_bottom
+	rjmp actual_update_exit
+
+powerup_top:
+	ldi ZL, low(racer_row_0)
+	ldi ZH, high(racer_row_0)
+
+	adiw Z, 7
+	ldi temp, 'S'
+	st Z, temp
+	rjmp actual_update_exit
+
+powerup_bottom:
+	ldi ZL, low(racer_row_1)
+	ldi ZH, high(racer_row_1)
+
+	adiw Z, 7
+	ldi temp, 'S'
+	st Z, temp
+	rjmp actual_update_exit
+
+obstacle_top:
+	ldi ZL, low(racer_row_0)
+	ldi ZH, high(racer_row_0)
+
+	adiw Z, 7
+	ldi temp, 'O'
+	st Z, temp
+	rjmp actual_update_exit
+
+obstacle_bottom:
+	ldi ZL, low(racer_row_1)
+	ldi ZH, high(racer_row_1)
+
+	adiw Z, 7
+	ldi temp, 'O'
+	st Z, temp
+
+actual_update_exit:
     pop temp2
     pop temp
     ret
