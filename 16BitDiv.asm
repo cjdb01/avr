@@ -1,10 +1,10 @@
-.DEF LSB = R0 ; LeastSigBit 16-bit-number to be divided
-.DEF MSB = R1 ; MostSigBit 16-bit-number to be divided
-.DEF temp = R2 ; interim register
-.DEF divN = R3 ; 8-bit-number to divide with
-.DEF lsbRes = R4 ; LSB result
-.DEF msbRes = R5 ; MSB result
-.DEF loader = R16; multipurpose register for loading
+.DEF LSB = R2 ; LeastSigBit 16-bit-number to be divided
+.DEF MSB = R3 ; MostSigBit 16-bit-number to be divided
+.DEF temp = R4 ; interim register
+.DEF divN = R5 ; 8-bit-number to divide with
+.DEF lsbRes = R6 ; LSB result
+.DEF msbRes = R7 ; MSB result
+.DEF loader = R8; multipurpose register for loading
 .CSEG
 .ORG 0
 bigNumDiv:
