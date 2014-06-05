@@ -62,8 +62,8 @@ out SPL, temp
 ldi temp, high(RAMEND)
 out SPH, temp
 
-ldi_low_reg row, low(75)
-ldi_low_reg column, high(75)
+ldi_low_reg zero, low(75)
+ldi_low_reg count, high(75)
 ldi_low_reg result_lo, 0
 ldi_low_reg result_hi, 0
 
@@ -123,22 +123,22 @@ rjmp main_loop
 itoa_function:
 prologue:
     push temp
-    push row
-    push column
+    push zero
+    push count
     push result_lo
     push result_hi
 
 itoa_core:
 ldi XH, high(string)
 ldi XL, low(string)
-adiw XL:XH, 6 ; move data pointer 6 chars to the right
+adiw XL:XH, 7 ; move data pointer 6 chars to the right
 
 ldi_low_reg TEN, LOW(10)
 
 ; Handle 0 explicitely, otherwise empty string is printed for 0
-CPI_low_reg column, 0
+CPI_low_reg count, 0
 brne loop2
-CPI_low_reg row, 0
+CPI_low_reg zero, 0
 brne loop2
 ldi temp, '0'
 st -X, temp
@@ -146,22 +146,20 @@ rjmp exit
 
 loop2: ;     while (num != 0)
 
-    CPI_low_reg row, 0                     ; if num < 1, break
+    CPI_low_reg zero, 0                     ; if num < 1, break
     brne after_check
-    CPI_low_reg column, 1
+    CPI_low_reg count, 1
     BRLT exit
 
 after_check:
     rcall bigNumDiv
 
-    ;mod16 row, column, TEN, result_lo        ; str[i++] = (num % 10) + '0';
     
     ldi temp, '0'
     add divN, temp
     st -X, divN
 
-    ;div16 row, column, TEN, result_lo, result_hi        ; num = num / 10;
-    movw column:row, result_hi:result_lo
+    movw count:zero, result_hi:result_lo
 
     rjmp loop2
 
@@ -169,8 +167,8 @@ exit:
     ldi temp, 0      ;     str[i] = '\0'; // Append string terminator
     st -X, temp
 epilogue:
-    push column
-    push row
+    push count
+    push zero
     pop result_hi
     pop result_lo
     pop temp
@@ -179,27 +177,27 @@ epilogue:
 
 ;=============DIV16===========
 
-;.DEF LSB = R2 ; LeastSigBit 16-bit-number to be divided = row - R6
-;.DEF MSB = R3 ; MostSigBit 16-bit-number to be divided = column - R7
+;.DEF LSB = R2 ; LeastSigBit 16-bit-number to be divided = zero - R6
+;.DEF MSB = R3 ; MostSigBit 16-bit-number to be divided = count - R7
 ;.DEF temp = R4 ; interim register = temp - R16
 ;.DEF loader = R8; multipurpose register for loading = temp2 - R17
 
 bigNumDiv:
 
-push row
-push column
+push zero
+push count
 push temp
 ;push divN
 clr divN
 push temp2
 
     ;ldi temp2,0x00 ; LestSigBit to be divided
-    ;mov column,temp2
+    ;mov count,temp2
     ;ldi temp2, 0x00 ; MostSigBit to be divided
-    ;mov row,temp2
+    ;mov zero,temp2
     ldi temp2,0x0A ; 8 bit num to be divided with
     mov divN,temp2
-; Divide column:row by divN
+; Divide count:zero by divN
 div8:
     clr temp ; clear temp register
     clr result_hi ; clear result (the result registers
@@ -208,8 +206,8 @@ div8:
 ; Start Div loop
 div8a:
     clc ; clear carry-bit
-    rol row ; rotate the next-upper bit of the number
-    rol column ; to the interim register (multiply by 2)
+    rol zero ; rotate the next-upper bit of the number
+    rol count ; to the interim register (multiply by 2)
     rol temp
     brcs div8b ; a one has rolled left, so subtract
     cp temp,divN ; Division result 1 or 0?
@@ -234,7 +232,7 @@ endBigNumDiv:
     ;pop result_lo
     ;pop divN
     pop temp
-    pop column
-    pop row
+    pop count
+    pop zero
     
     ret
