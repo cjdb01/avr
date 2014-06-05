@@ -660,20 +660,16 @@ move_vertical:
     ldi ZH, high(position)
     ldi temp, ' '
     st Z, temp
-    
-    ; there are 17 memory cells between the up
-    ; position and the down position
-    ; if temp2 > 0 then we're moving down (moving forward in memory)
-    ; otherwise we're moving up (moving backward in memory)
+
     cpi temp2, 0
     brge move_vertical_up
-    sbiw Z, 17
+    sbiw Z, 30
     rjmp move_vertical_store
 move_vertical_up:
-    adiw Z, 17
+    adiw Z, 30
 move_vertical_store:
     ; find out if we're going to drive into something and resolve accordingly
-    rcall collision_check
+    ;rcall collision_check
     ldi temp, 'C'
     st Z, temp
     ret
