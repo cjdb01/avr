@@ -8,23 +8,23 @@
 .include "m64def.inc"
 
 ; -------------------- Registers --------------------
-.def zero       = r2 ; can't be r0 because r1:r0 is used for multiplication
-.def count      = r3
-.def score_low  = r4
+.def zero = r2 ; can't be r0 because r1:r0 is used for multiplication
+.def count = r3
+.def score_low = r4
 .def score_high = r5 ; low registers chosen because they will be less popular for frequent usage
-.def row        = r6
-.def column     = r7
-.def mask       = r8
-.def press      = r9
-.def ten        = r10 ; r10 holds the value 10
+.def row = r6
+.def column = r7
+.def mask = r8
+.def press = r9
+.def ten = r10 ; r10 holds the value 10
 .def divN = R11 ; 8-bit-number to divide with
 .def result_lo = R12 ; 16bit div result
 .def result_hi = R13 ; 16bit div result
-.def counter4 = r14   ; used for timer
-.def temp       = r16
-.def temp2      = r17
+.def counter4 = r14 ; used for timer
+.def temp = r16
+.def temp2 = r17
 .def delay_high = r18
-.def delay_low  = r19
+.def delay_low = r19
 
 .def data = r20
 .def counter = r21
@@ -45,42 +45,48 @@
     .org 0x103
     position: .byte 1
 
+	.org 0x104
+	rand: .byte 4
+
 ; -------------------- String data --------------------
     panel_row_0: .byte 8 ;"L:0 C:3|"
-    racer_row_0: .byte 8 ; "C       "
-    panel_row_1: .byte 8 ; "S:    0|"
-    racer_row_1: .byte 8 ; "        "
+    racer_row_0: .byte 8 ; "C "
+    panel_row_1: .byte 8 ; "S: 0|"
+    racer_row_1: .byte 8 ; " "
 
 ; -------------------- Literals --------------------
 .cseg
     .equ length = 16
     
+	.equ RAND_A = 214013
+	.equ RAND_C = 2531011
+
     ; keypad bits
-    .equ portd_dir        = 0xF0
+    .equ portd_dir = 0xF0
     .equ init_column_mask = 0xEF
-    .equ init_row_mask    = 0x01
-    .equ row_mask         = 0x0F
+    .equ init_row_mask = 0x01
+    .equ row_mask = 0x0F
 
     ; LCD protocol bits
     .equ lcd_rs = 3
     .equ lcd_rw = 1
-    .equ lcd_e  = 2
+    .equ lcd_e = 2
     
     ; LCD functions
-    .equ lcd_func_set  = 0b00110000
-    .equ lcd_disp_off  = 0b00001000
-    .equ lcd_disp_clr  = 0b00000001
-    .equ lcd_disp_on   = 0b00001100
+    .equ lcd_func_set = 0b00110000
+    .equ lcd_disp_off = 0b00001000
+    .equ lcd_disp_clr = 0b00000001
+    .equ lcd_disp_on = 0b00001100
     .equ lcd_entry_set = 0b00000100
-    .equ lcd_addr_set  = 0b10000000
+    .equ lcd_addr_set = 0b10000000
     
     ; LCD function bits and constants
-    .equ lcd_b  = 0
-    .equ lcd_s  = 0
-    .equ lcd_c  = 1
+    .equ lcd_b = 0
+    .equ lcd_s = 0
+    .equ lcd_c = 1
     .equ lcd_id = 1
-    .equ lcd_f  = 2
-    .equ lcd_n  = 3
+    .equ lcd_f = 2
+    .equ lcd_n = 3
     .equ lcd_bf = 7
     
     .equ lcd_line_1 = 0
@@ -91,17 +97,17 @@
 ; literally prints a new line
 .macro print_newline
     rcall lcd_wait_busy
-    ldi   data, lcd_addr_set | lcd_line_2
-    rcall lcd_write_com                   ; move the insertion point to start of line 2
+    ldi data, lcd_addr_set | lcd_line_2
+    rcall lcd_write_com ; move the insertion point to start of line 2
 .endmacro ; print_newline
 
 .macro print_data
 print_data_loop:
-    ld data, Z+                    ; read a character from the string
+    ld data, Z+ ; read a character from the string
     rcall lcd_wait_busy
-    rcall lcd_write_data            ; write the character to the screen
-    dec count                       ; decrement character counter
-    brne print_data_loop            ; loop again if there are more characters
+    rcall lcd_write_data ; write the character to the screen
+    dec count ; decrement character counter
+    brne print_data_loop ; loop again if there are more characters
 .endmacro ; print_data
 
 .macro ldi_low_reg
@@ -175,24 +181,24 @@ get_points2:
 .endmacro
 
 ; -------------------- Interrupts --------------------
-jmp RESET
-
-jmp Default ; IRQ0 Handler
-jmp Default ; IRQ1 Handler
-jmp Default ; IRQ2 Handler
-jmp Default ; IRQ3 Handler
-jmp Default ; IRQ4 Handler
-jmp Default ; IRQ5 Handler
-jmp Default ; IRQ6 Handler
-jmp Default ; IRQ7 Handler
-jmp Default ; Timer2 Compare Handler
-jmp Default ; Timer2 Overflow Handler
-jmp Default ; Timer1 Capture Handler
-jmp Default ; Timer1 CompareA Handler
-jmp Default ; Timer1 CompareB Handler
-jmp Default ; Timer1 Overflow Handler
-jmp Default ; Timer0 Compare Handler
-jmp timer_0_prologue  ; Timer0 Overflow Handler
+jmp reset
+.org INT0addr
+jmp reset ; irq0
+.org INT1addr
+jmp reset ; irq1
+jmp reset ; irq2
+jmp reset ; irq3
+jmp reset ; irq4
+jmp reset ; irq5
+jmp reset ; irq6
+jmp reset ; irq7
+jmp default ; timer2 compare
+jmp default ; timer2 overflow
+jmp default ; timer1 capture
+jmp default ; timer1 compare_a
+jmp default ; timer1 compare_b
+jmp default ; timer0 compare
+jmp timer_0_prologue ; timer0 overflow
 
 ; Default
 default: reti
@@ -202,24 +208,24 @@ reset:
     mov ten, temp
 
     store_string panel_row_0, 'L', ':', '1', ' ', 'C', ':', '3', '|'
-    store_string racer_row_0, 'C', 'S', 'S', 'S', 'S', 'S', 'S', 'S'
+    store_string racer_row_0, 'C', ' ', ' ', ' ', ' ', ' ', ' ', ' '
     store_string panel_row_1, 'S', ':', ' ', ' ', ' ', ' ', '0', '|'
-    store_string racer_row_1, 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S'
+    store_string racer_row_1, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
 
     ; clear variables
     clr press
     clr zero
     clr r15
 
-    ldi_low_reg counter,0            
+    ldi_low_reg counter,0
     ldi_low_reg counter2,0
     ldi_low_reg counter3,0
     ldi_low_reg counter4,0
     
     ldi temp, low(RAMEND)
-    out SPL,  temp
+    out SPL, temp
     ldi temp, high(RAMEND)
-    out SPH,  temp
+    out SPH, temp
     
     ldi temp, portd_dir
     out DDRD, temp
@@ -257,17 +263,19 @@ reset:
     clr ZL
     clr ZH
 
-    ldi temp, 0b00000011     ; 
-    out TCCR0, temp          ; Prescaling value=8  ;256*8/7.3728( Frequency of the clock 7.3728MHz, for the overflow it should go for 256 times)
-    ldi temp, 1<<TOIE0       ; =278 microseconds
-    out TIMSK, temp          ; T/C0 interrupt enable
+    ldi temp, 0b00000011 ;
+    out TCCR0, temp ; Prescaling value=8 ;256*8/7.3728( Frequency of the clock 7.3728MHz, for the overflow it should go for 256 times)
+    ldi temp, 1<<TOIE0 ; =278 microseconds
+    out TIMSK, temp ; T/C0 interrupt enable
     sei
+
+	rcall InitRandom
 
     jmp main
 
 ; timer_0 interrupt
 timer_0_prologue:
-    push r29        ; save conflict registers
+    push r29 ; save conflict registers
     push r28
     in r24, SREG
     push r24
@@ -279,17 +287,17 @@ timer_0:
     cpi counter2, 35
     brne timer_0_second_loop
     
-    rcall update         ; every second, update
+    rcall update ; every second, update
 
-    ldi_low_reg counter,0    ; clear counter value after 3597 interrupts gives us one second
+    ldi_low_reg counter,0 ; clear counter value after 3597 interrupts gives us one second
     ldi_low_reg counter2,0
     ldi_low_reg counter3,0
 
-    cpi_low_reg counter4,30             ; every 30 seconds
-    brlt timer_0_counter30              ; if counter4 < 30
+    cpi_low_reg counter4,30 ; every 30 seconds
+    brlt timer_0_counter30 ; if counter4 < 30
     
-    cpi_low_reg counter4,31             ; display for 3 seconds, then reset
-    brge timer_0_game_over_sleep              ; if counter4 > 30 
+    cpi_low_reg counter4,31 ; display for 3 seconds, then reset
+    brge timer_0_game_over_sleep ; if counter4 > 30
 
     rcall NEXT_LEVEL
 
@@ -349,9 +357,9 @@ lcd_write_com:
 
 ; Write a character to the LCD. data stores the value to be written
 lcd_write_data:
-    out PORTB, data         ; set the data port's value up
+    out PORTB, data ; set the data port's value up
     ldi temp, 1 << lcd_rs
-    out PORTA, temp         ; rs = 1, rw = 0 for a data write
+    out PORTA, temp ; rs = 1, rw = 0 for a data write
     nop
     sbi PORTA, lcd_e
     nop
@@ -378,10 +386,10 @@ lcd_wait_busy_loop:
     nop
     in temp, PINB
     cbi PORTA, lcd_e
-    sbrc temp, lcd_bf       ; if the busy flag is set then
-    rjmp lcd_wait_busy_loop ;    repeat the command read 
-    clr temp                ; else
-    out PORTA, temp         ;    turn off read mode
+    sbrc temp, lcd_bf ; if the busy flag is set then
+    rjmp lcd_wait_busy_loop ; repeat the command read
+    clr temp ; else
+    out PORTA, temp ; turn off read mode
     ser temp
     out DDRB, temp ; make PORTD an output port
     ret
@@ -403,7 +411,7 @@ lcd_init:
     out DDRA, temp ; PORTA is the control port, and is always all outputs
     
     ; we wish to delay the output for 15ms
-    ldi delay_low,  low(15000)
+    ldi delay_low, low(15000)
     ldi delay_high, high(15000)
     rcall delay
     
@@ -414,7 +422,7 @@ lcd_init:
     ; delay for more than 4.1ms
     ldi delay_low, low(4100)
     ldi delay_high, high(4100)
-    rcall delay 
+    rcall delay
     
     rcall lcd_write_com ; function set command with 2 lines and 5*7 font
     
@@ -430,12 +438,12 @@ lcd_init:
     ; turn display off
     ldi data, lcd_disp_off
     rcall lcd_write_com
-    rcall lcd_wait_busy     ; wait until the LCD is ready
+    rcall lcd_wait_busy ; wait until the LCD is ready
     
     ; clear display
     ldi data, lcd_disp_clr
     rcall lcd_write_com
-    rcall lcd_wait_busy     ; wait until lcd is ready
+    rcall lcd_wait_busy ; wait until lcd is ready
     
     ; entry set command with i/d = 1, and s = 0
     ldi data, lcd_entry_set | (1 << lcd_id)
@@ -731,15 +739,15 @@ game_over:
     print_data
     rcall lcd_wait_busy
 
-    ldi_low_reg counter4, 31     ; after 3 seconds, rjmp to reset
+    ldi_low_reg counter4, 31 ; after 3 seconds, rjmp to reset
     ret
-;    rjmp auto_collision_exit
+; rjmp auto_collision_exit
     
 main:
     ldi_low_reg mask, init_column_mask
     clr column
     rcall lcd_init
-    ;out TIMSK, temp          ; T/C0 interrupt enable
+    ;out TIMSK, temp ; T/C0 interrupt enable
     lsl count
     ldi ZL, low(panel_row_0) ; point Y at the string
     ldi ZH, high(panel_row_0);recall that we must multiply any Program code label address
@@ -749,7 +757,7 @@ main:
     brne main2
     jmp reset
 main2:
-    rcall itoa_function
+rcall itoa_function
     ldi_low_reg count, length
 
     print_data
@@ -760,7 +768,7 @@ main2:
 
     rcall key_press
     out PORTC, score_low
-    out PORTE, score_high
+out PORTE, score_high
     rjmp main
 
 ; =============================
@@ -792,9 +800,9 @@ ldi temp, '0'
 st -X, temp
 rjmp exit
 
-loop2: ;     while (num != 0)
+loop2: ; while (num != 0)
 
-    CPI_low_reg score_low, 0                     ; if num < 1, break
+    CPI_low_reg score_low, 0 ; if num < 1, break
     brne after_check
     CPI_low_reg score_high, 1
     BRLT exit
@@ -812,14 +820,14 @@ after_check:
     rjmp loop2
 
 exit:
-    ;ldi temp, 0      ;     str[i] = '\0'; // Append string terminator
+    ;ldi temp, 0 ; str[i] = '\0'; // Append string terminator
     ;st -X, temp
 epilogue:
-    pop result_hi
-    pop result_lo
-    pop score_high
-    pop score_low
-    pop temp
+pop result_hi
+pop result_lo
+pop score_high
+pop score_low
+pop temp
     ret
 
 
@@ -843,8 +851,8 @@ push temp2
     ;mov score_high,temp2
     ;ldi temp2, 0x00 ; MostSigBit to be divided
     ;mov score_low,temp2
-    ldi temp2,0x0A ; 8 bit num to be divided with
-    mov divN,temp2
+    ;ldi temp2,0x0A ; 8 bit num to be divided with
+    mov divN,ten
 ; Divide score_high:score_low by divN
 div8:
     clr temp ; clear temp register
@@ -930,7 +938,7 @@ update_shift_powerup3:
     push temp
     ld temp, Z
     cpi temp, 'C'
-    breq powerboost
+breq powerboost
     pop temp
     st Z+, temp
     st Z+, temp2
@@ -938,18 +946,18 @@ update_shift_powerup3:
 
 powerboost:
     pop temp
-    push ZL
-    push ZH
+push ZL
+push ZH
     ldi ZL, low(level)
     ldi ZH, high(level)
     ld temp, Z
     
-    ;mul temp, ten
-    add score_low, temp
-    adc score_high, temp
+    mul temp, ten
+    add score_low, r0
+    adc score_high, r1
 
-    pop ZH
-    pop ZL
+pop ZH
+pop ZL
     rjmp update_shift_condition
 
 update_shift_condition:
@@ -996,6 +1004,21 @@ powerloss:
     rjmp update_shift_condition
     
 update_exit:
+	push score_low
+	push score_high
+	push ten
+	rcall GetRandom
+
+	mov score_low, temp
+	clr score_high
+	ldi_low_reg ten, 100
+
+	rcall bigNumDiv
+
+	pop ten
+	pop score_high
+	pop score_low
+
     pop temp2
     pop temp
     ret
@@ -1020,3 +1043,102 @@ reset_level:
     pop ZH
     pop ZL
     ret
+
+InitRandom:
+push r16 ; save conflict register
+
+in r16, TCNT1L ; Create random seed from time of timer 1
+sts RAND,r16
+sts RAND+2,r16
+in r16,TCNT1H
+sts RAND+1, r16
+sts RAND+3, r16
+
+pop r16 ; restore conflict register
+ret
+
+GetRandom:
+push r0 ; save conflict registers
+push r1
+push r17
+push r18
+push r19
+push r20
+push r21
+push r22
+
+clr r22 ; remains zero throughout
+
+ldi r16, low(RAND_C) ; set original value to be equal to C
+ldi r17, BYTE2(RAND_C)
+ldi r18, BYTE3(RAND_C)
+ldi r19, BYTE4(RAND_C)
+
+; calculate A*X + C where X is previous random number.  A is 3 bytes.
+lds r20, RAND
+ldi r21, low(RAND_A)
+mul r20, r21 ; low byte of X * low byte of A
+add r16, r0
+adc r17, r1
+adc r18, r22
+
+ldi r21, byte2(RAND_A)
+mul r20, r21  ; low byte of X * middle byte of A
+add r17, r0
+adc r18, r1
+adc r19, r22
+
+ldi r21, byte3(RAND_A)
+mul r20, r21  ; low byte of X * high byte of A
+add r18, r0
+adc r19, r1
+
+lds r20, RAND+1
+ldi r21, low(RAND_A)
+mul r20, r21  ; byte 2 of X * low byte of A
+add r17, r0
+adc r18, r1
+adc r19, r22
+
+ldi r21, byte2(RAND_A)
+mul r20, r21  ; byte 2 of X * middle byte of A
+add r18, r0
+adc r19, r1
+
+ldi r21, byte3(RAND_A)
+mul r20, r21  ; byte 2 of X * high byte of A
+add r19, r0
+
+lds r20, RAND+2
+ldi r21, low(RAND_A)
+mul r20, r21  ; byte 3 of X * low byte of A
+add r18, r0
+adc r19, r1
+
+ldi r21, byte2(RAND_A)
+mul r20, r21  ; byte 2 of X * middle byte of A
+add r19, r0
+
+lds r20, RAND+3
+ldi r21, low(RAND_A)	
+mul r20, r21  ; byte 3 of X * low byte of A
+add r19, r0
+
+sts RAND, r16 ; store random number
+sts RAND+1, r17
+sts RAND+2, r18
+sts RAND+3, r19
+
+mov r16, r19  ; prepare result (bits 30-23 of random number X)
+lsl r18
+rol r16
+
+pop r22 ; restore conflict registers
+pop r21 
+pop r20
+pop r19
+pop r18
+pop r17
+pop r1
+pop r0
+ret
