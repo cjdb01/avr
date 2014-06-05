@@ -10,8 +10,8 @@
 ; -------------------- Registers --------------------
 .def zero       = r2 ; can't be r0 because r1:r0 is used for multiplication
 .def count      = r3
-.def score_high = r4 ; low registers chosen because they will be less popular for frequent usage
-.def score_low  = r5
+.def score_low  = r4
+.def score_high = r5 ; low registers chosen because they will be less popular for frequent usage
 .def row        = r6
 .def column     = r7
 .def mask       = r8
@@ -201,10 +201,10 @@ reset:
     ldi temp, 10
     mov ten, temp
 
-    store_string panel_row_0, 'L', ':', '0', ' ', 'C', ':', '3', '|'
-    store_string racer_row_0, 'C', ' ', ' ', ' ', 'O', 'O', 'O', ' '
+    store_string panel_row_0, 'L', ':', '1', ' ', 'C', ':', '3', '|'
+    store_string racer_row_0, 'C', 'S', 'S', 'S', 'S', 'S', 'S', 'S'
     store_string panel_row_1, 'S', ':', ' ', ' ', ' ', ' ', '0', '|'
-    store_string racer_row_1, ' ', ' ', ' ', ' ', ' ', ' ', 'S', ' ' ; 208
+    store_string racer_row_1, 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S'
 
     ; clear variables
     clr press
@@ -760,6 +760,7 @@ main2:
 
     rcall key_press
     out PORTC, score_low
+	out PORTE, score_high
     rjmp main
 
 ; =============================
@@ -943,9 +944,9 @@ powerboost:
     ldi ZH, high(level)
     ld temp, Z
     
-    mul temp, ten
-    add score_low, r0
-    adc score_high, r1
+    ;mul temp, ten
+    add score_low, temp
+    adc score_high, temp
 
 	pop ZH
 	pop ZL
