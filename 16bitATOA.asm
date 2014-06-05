@@ -12,9 +12,6 @@ string: .byte 1
 ;==============================
 
 
-.DEF divN = R11 ; 8-bit-number to divide with
-.DEF result_lo = R12 ; LSB result
-.DEF result_hi = R13 ; MSB result
 .def zero       = r2 ; can't be r0 because r1:r0 is used for multiplication
 .def count      = r3
 .def score_high = r4 ; low registers chosen because they will be less popular for frequent usage
@@ -24,6 +21,9 @@ string: .byte 1
 .def mask       = r8
 .def press      = r9
 .def ten        = r10 ; r10 holds the value 10
+.DEF divN = R11 ; 8-bit-number to divide with
+.DEF result_lo = R12 ; LSB result
+.DEF result_hi = R13 ; MSB result
 .def counter4 = r14   ; used for timer
 .def temp       = r16
 .def temp2      = r17
