@@ -839,6 +839,8 @@ pop temp
 ;.DEF temp = R4 ; interim register = temp - R16
 ;.DEF loader = R8; multipurpose register for loading = temp2 - R17
 
+; code used from http://www.avr-asm-tutorial.net/avr_en/calc/DIV8E.html
+
 bigNumDiv:
 
 push score_low
