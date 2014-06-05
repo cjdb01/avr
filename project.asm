@@ -160,8 +160,9 @@ on_top_exit:
     ld temp, Z
 
     cpi temp, 'O'
-    brne update_shift
-
+    breq get_points2
+    jmp update_shift
+get_points2:
     ldi temp, ' '
     st Z, temp
     adiw Z, 1
@@ -712,7 +713,7 @@ obstacle_collision:
     
     ldi temp, 75
     out PORTE, temp
-    
+    rcall reset_level
     rjmp auto_collision_exit
     
 powerup_collision:
@@ -835,7 +836,9 @@ update_shift_obstacle:
     push temp
     ld temp, Z
     cpi temp, 'C'
-    breq life_loss
+    brne update_shift_obstacle2
+    jmp life_loss
+update_shift_obstacle2:
     pop temp
     st Z+, temp
     st Z+, temp2
@@ -903,6 +906,7 @@ life_loss2:
     ldi ZH, high(panel_row_0)
     adiw Z, 6
     st Z, temp2
+    rcall reset_level
     rjmp update_exit
 
 powerloss:
@@ -916,4 +920,23 @@ update_exit:
     pop temp
     ret
     
-
+reset_level:
+    push ZL
+    push ZH
+    push temp
+    
+    store_string racer_row_0, 'C', ' ', ' ', ' ', ' ', ' ', ' ', ' '
+    store_string racer_row_1, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
+    
+    ldi ZL, low(position)
+    ldi ZH, high(position)
+    st Z, zero
+    
+    ldi ZL, low(not_top)
+    ldi ZH, high(not_top)
+    st Z, zero
+    
+    pop temp
+    pop ZH
+    pop ZL
+    ret
