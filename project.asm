@@ -175,24 +175,24 @@ get_points2:
 .endmacro
 
 ; -------------------- Interrupts --------------------
-jmp reset
-.org INT0addr
-jmp reset            ; irq0
-.org INT1addr
-jmp reset          ; irq1
-jmp reset          ; irq2
-jmp reset          ; irq3
-jmp reset          ; irq4
-jmp reset          ; irq5
-jmp reset          ; irq6
-jmp reset          ; irq7
-jmp default          ; timer2 compare
-jmp default          ; timer2 overflow
-jmp default          ; timer1 capture
-jmp default          ; timer1 compare_a
-jmp default          ; timer1 compare_b
-jmp default          ; timer0 compare
-jmp timer_0_prologue ; timer0 overflow
+jmp RESET
+
+jmp Default ; IRQ0 Handler
+jmp Default ; IRQ1 Handler
+jmp Default ; IRQ2 Handler
+jmp Default ; IRQ3 Handler
+jmp Default ; IRQ4 Handler
+jmp Default ; IRQ5 Handler
+jmp Default ; IRQ6 Handler
+jmp Default ; IRQ7 Handler
+jmp Default ; Timer2 Compare Handler
+jmp Default ; Timer2 Overflow Handler
+jmp Default ; Timer1 Capture Handler
+jmp Default ; Timer1 CompareA Handler
+jmp Default ; Timer1 CompareB Handler
+jmp Default ; Timer1 Overflow Handler
+jmp Default ; Timer0 Compare Handler
+jmp timer_0_prologue  ; Timer0 Overflow Handler
 
 ; Default
 default: reti
@@ -749,7 +749,7 @@ main:
     brne main2
     jmp reset
 main2:
-	rcall itoa_function
+    rcall itoa_function
     ldi_low_reg count, length
 
     print_data
@@ -760,7 +760,7 @@ main2:
 
     rcall key_press
     out PORTC, score_low
-	out PORTE, score_high
+    out PORTE, score_high
     rjmp main
 
 ; =============================
@@ -815,11 +815,11 @@ exit:
     ;ldi temp, 0      ;     str[i] = '\0'; // Append string terminator
     ;st -X, temp
 epilogue:
-	pop result_hi
-	pop result_lo
-	pop score_high
-	pop score_low
-	pop temp
+    pop result_hi
+    pop result_lo
+    pop score_high
+    pop score_low
+    pop temp
     ret
 
 
@@ -930,7 +930,7 @@ update_shift_powerup3:
     push temp
     ld temp, Z
     cpi temp, 'C'
-	breq powerboost
+    breq powerboost
     pop temp
     st Z+, temp
     st Z+, temp2
@@ -938,8 +938,8 @@ update_shift_powerup3:
 
 powerboost:
     pop temp
-	push ZL
-	push ZH
+    push ZL
+    push ZH
     ldi ZL, low(level)
     ldi ZH, high(level)
     ld temp, Z
@@ -948,8 +948,8 @@ powerboost:
     add score_low, temp
     adc score_high, temp
 
-	pop ZH
-	pop ZL
+    pop ZH
+    pop ZL
     rjmp update_shift_condition
 
 update_shift_condition:

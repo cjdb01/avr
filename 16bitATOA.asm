@@ -164,13 +164,13 @@ after_check:
     rjmp loop2
 
 exit:
-    ldi temp, 0      ;     str[i] = '\0'; // Append string terminator
-    st -X, temp
+;    ldi temp, 0      ;     str[i] = '\0'; // Append string terminator
+;    st -X, temp
 epilogue:
-    push count
-    push zero
     pop result_hi
     pop result_lo
+    pop count
+    pop zero
     pop temp
     ret
 
