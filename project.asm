@@ -712,7 +712,7 @@ obstacle_collision:
     
     ldi temp, 75
     out PORTE, temp
-    
+    rcall reset_level
     rjmp auto_collision_exit
     
 powerup_collision:
@@ -835,13 +835,13 @@ update_shift_obstacle:
     push temp
     ld temp, Z
     cpi temp, 'C'
-    breq life_loss
+    brne update_shift_obstacle2
+    jmp life_loss
+update_shift_obstacle2:
     pop temp
     st Z+, temp
     st Z+, temp2
-    
-    store_string racer_row_0, 'C', ' ', ' ', ' ', ' ', ' ', ' ', ' '
-    store_string racer_row_1, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
+    rcall reset_level
     rjmp update_shift_condition
     
 update_shift_powerup:
@@ -917,4 +917,9 @@ powerloss:
 update_exit:
     pop temp2
     pop temp
+    ret
+    
+reset_level:
+    store_string racer_row_0, 'C', ' ', ' ', ' ', ' ', ' ', ' ', ' '
+    store_string racer_row_1, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
     ret
