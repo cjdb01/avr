@@ -202,9 +202,9 @@ reset:
     mov ten, temp
 
     store_string panel_row_0, 'L', ':', '0', ' ', 'C', ':', '3', '|'
-    store_string racer_row_0, 'C', ' ', 'S', ' ', 'O', 'O', 'O', ' '
+    store_string racer_row_0, 'C', ' ', ' ', ' ', 'O', 'O', 'O', ' '
     store_string panel_row_1, 'S', ':', ' ', ' ', ' ', ' ', '0', '|'
-    store_string racer_row_1, ' ', ' ', 'S', ' ', ' ', ' ', 'S', ' ' ; 208
+    store_string racer_row_1, ' ', ' ', ' ', ' ', ' ', ' ', 'S', ' ' ; 208
 
     ; clear variables
     clr press
@@ -739,7 +739,7 @@ main:
     ldi_low_reg mask, init_column_mask
     clr column
     rcall lcd_init
-    out TIMSK, temp          ; T/C0 interrupt enable
+    ;out TIMSK, temp          ; T/C0 interrupt enable
     lsl count
     ldi ZL, low(panel_row_0) ; point Y at the string
     ldi ZH, high(panel_row_0);recall that we must multiply any Program code label address
@@ -756,7 +756,7 @@ main2:
     ldi_low_reg count, length
     print_data
     rcall lcd_wait_busy
-    
+
     rcall key_press
     out PORTC, score_low
     rjmp main
@@ -925,6 +925,7 @@ update_shift_powerup3:
     push temp
     ld temp, Z
     cpi temp, 'C'
+	breq powerboost
     pop temp
     st Z+, temp
     st Z+, temp2
@@ -932,13 +933,18 @@ update_shift_powerup3:
 
 powerboost:
     pop temp
-    ldi YL, low(level)
-    ldi YH, high(level)
-    ld temp, Y
+	push ZL
+	push ZH
+    ldi ZL, low(level)
+    ldi ZH, high(level)
+    ld temp, Z
     
     mul temp, ten
     add score_low, r0
     adc score_high, r1
+
+	pop ZH
+	pop ZL
     rjmp update_shift_condition
 
 update_shift_condition:
