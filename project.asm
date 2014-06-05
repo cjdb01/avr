@@ -108,10 +108,10 @@ print_data_loop:
 .endmacro ; print_data
 
 .macro ldi_low_reg
-	push temp2
+    push temp2
     ldi temp2, @1
     mov @0, temp2
-	pop temp2
+    pop temp2
 .endmacro ; ldi_low_reg
 
 .macro cpi_low_reg
@@ -160,20 +160,20 @@ on_top_exit:
     ld temp, Z
 
     cpi temp, 'O'
-	brne update_shift
+    brne update_shift
 
-	ldi temp, ' '
-	st Z, temp
-	adiw Z, 1
-	push ZL
-	push ZH
-	ldi ZL, low(level)
-	ldi ZH, high(level)
-	ld temp2, Z
-	add score_low, temp2
-	adc score_high, zero
-	pop ZH
-	pop ZL
+    ldi temp, ' '
+    st Z, temp
+    adiw Z, 1
+    push ZL
+    push ZH
+    ldi ZL, low(level)
+    ldi ZH, high(level)
+    ld temp2, Z
+    add score_low, temp2
+    adc score_high, zero
+    pop ZH
+    pop ZL
 .endmacro
 
 ; -------------------- Interrupts --------------------
@@ -209,7 +209,7 @@ reset:
     ; clear variables
     clr press
     clr zero
-	clr r15
+    clr r15
 
     ldi_low_reg counter,0            
     ldi_low_reg counter2,0
@@ -235,37 +235,37 @@ reset:
     ldi ZH, high(position)
     st Z, zero
 
-	ldi ZL, low(ammo)
-	ldi ZH, high(ammo)
-	st Z, zero
+    ldi ZL, low(ammo)
+    ldi ZH, high(ammo)
+    st Z, zero
 
-	ldi ZL, low(lives)
-	ldi ZH, high(lives)
-	ldi temp, 3
-	st Z, temp
+    ldi ZL, low(lives)
+    ldi ZH, high(lives)
+    ldi temp, 3
+    st Z, temp
 
-	ldi ZL, low(level)
-	ldi ZH, high(level)
-	ldi temp, 1
-	st Z, temp
+    ldi ZL, low(level)
+    ldi ZH, high(level)
+    ldi temp, 1
+    st Z, temp
 
     clr score_low
     clr score_high
-	clr temp
+    clr temp
     clr temp2
 
-	clr XL
-	clr XH
-	clr YL
-	clr YH
-	clr ZL
-	clr ZH
+    clr XL
+    clr XH
+    clr YL
+    clr YH
+    clr ZL
+    clr ZH
 
-	ldi temp, 0b00000011     ; 
-	out TCCR0, temp          ; Prescaling value=8  ;256*8/7.3728( Frequency of the clock 7.3728MHz, for the overflow it should go for 256 times)
-	ldi temp, 1<<TOIE0       ; =278 microseconds
-	out TIMSK, temp          ; T/C0 interrupt enable
-	sei
+    ldi temp, 0b00000011     ; 
+    out TCCR0, temp          ; Prescaling value=8  ;256*8/7.3728( Frequency of the clock 7.3728MHz, for the overflow it should go for 256 times)
+    ldi temp, 1<<TOIE0       ; =278 microseconds
+    out TIMSK, temp          ; T/C0 interrupt enable
+    sei
 
     jmp main
 
@@ -528,11 +528,13 @@ keypad_zero:
 poll_check:
     cpi_low_reg press, 0
     breq keypad_poll_check_not_pressed
-	ret
+    ret
     
 keypad_poll_check_not_pressed:
     ldi_low_reg press, 1
     
+    cpi temp, 0xA
+    breq oopdate
     cpi temp, 2
     breq keypad_up
     cpi temp, 4
@@ -589,7 +591,7 @@ keypad_left:
     ldi temp, ' '
     st Z, temp
     sbiw Z, 1
-	rcall auto_collision_checking
+    rcall auto_collision_checking
     ldi temp, 'C'
     st Z, temp
 
@@ -598,6 +600,9 @@ keypad_left:
     ldi ZH, high(position)
     st Z, temp2
     rjmp keypad_exit
+
+oopdate:
+    rcall update
 
 keypad_exit:
     ret
@@ -616,7 +621,7 @@ keypad_right:
     adc ZH, zero
     ldi temp, ' '
     st Z+, temp
-	rcall auto_collision_checking
+    rcall auto_collision_checking
     ldi temp, 'C'
     st Z, temp
 
@@ -637,7 +642,7 @@ keypad_down:
 
     add ZL, temp2
     adc ZH, zero
-	rcall auto_collision_checking
+    rcall auto_collision_checking
     ldi temp, 'C'
     st Z, temp
 
@@ -664,7 +669,7 @@ auto_collision_checking:
     push ZL
     push ZH
     push temp
-	push temp2
+    push temp2
     ld temp2, Z
 
     cpi temp2, 'O' ; O for obstacle
@@ -681,7 +686,7 @@ auto_collision_checking:
     clr temp2
 
 auto_collision_exit:
-	pop temp2
+    pop temp2
     pop temp
     pop ZH
     pop ZL
@@ -779,9 +784,22 @@ game_over:
     rcall lcd_wait_busy
 
     ldi_low_reg counter4, 31     ; after 3 seconds, rjmp to reset
-	ret
+    ret
 ;    rjmp auto_collision_exit
     
+main:
+    ldi_low_reg mask, init_column_mask
+    clr column
+    rcall lcd_init
+    out TIMSK, temp          ; T/C0 interrupt enable
+    lsl count
+    ldi ZL, low(panel_row_0) ; point Y at the string
+    ldi ZH, high(panel_row_0);recall that we must multiply any Program code label address
+                                      ; by 2 to get the correct location
+                                      
+    cpi_low_reg r15, 1
+    brne main2
+    jmp reset
 main2:
     ldi_low_reg count, length
 
@@ -792,64 +810,64 @@ main2:
     rcall lcd_wait_busy
     
     rcall key_press
-	out PORTC, score_low
+    out PORTC, score_low
     rjmp main
 
 update:
-	push temp
-	push temp2
+    push temp
+    push temp2
     ldi ZL, low(racer_row_0)
-	ldi ZH, high(racer_row_0)
-	
+    ldi ZH, high(racer_row_0)
+    
     get_points
     clr count
 update_shift:
     ld temp, Z+
     cpi temp, 'O'
-	breq update_shift_obstacle
-	cpi temp, 'S'
-	breq update_shift_powerup
-	rjmp update_shift_condition
+    breq update_shift_obstacle
+    cpi temp, 'S'
+    breq update_shift_powerup
+    rjmp update_shift_condition
 
 update_shift_obstacle:
-	ld temp2, Z
-	sbiw Z, 2
-	push temp
-	ld temp, Z
-	cpi temp, 'C'
-	breq life_loss
-	pop temp
-	st Z+, temp
-	st Z+, temp2
+    ld temp2, Z
+    sbiw Z, 2
+    push temp
+    ld temp, Z
+    cpi temp, 'C'
+    breq life_loss
+    pop temp
+    st Z+, temp
+    st Z+, temp2
     rjmp update_shift_condition
     
 update_shift_powerup:
-	ld temp2, Z
-	cpi_low_reg count, 4
-	brne update_shift_powerup2
-	jmp powerloss
+    ld temp2, Z
+    cpi_low_reg count, 4
+    brne update_shift_powerup2
+    jmp powerloss
 update_shift_powerup2:
-	cpi_low_reg count, 12
-	breq powerloss
-	sbiw Z, 2
-	push temp
-	ld temp, Z
-	cpi temp, 'C'
-	pop temp
-	st Z+, temp
-	st Z+, temp2
-	rjmp update_shift_condition
+    cpi_low_reg count, 12
+    breq powerloss
+    sbiw Z, 2
+    push temp
+    ld temp, Z
+    cpi temp, 'C'
+    pop temp
+    st Z+, temp
+    st Z+, temp2
+    rjmp update_shift_condition
 
 powerboost:
-	pop temp
-	ldi YL, low(level)
+    pop temp
+    ldi YL, low(level)
     ldi YH, high(level)
     ld temp, Y
     
     mul temp, ten
     add score_low, r1
     adc score_high, r0
-	rjmp update_shift_condition
+    rjmp update_shift_condition
 
 update_shift_condition:
     inc count
@@ -863,18 +881,18 @@ update_shift_condition_row_0:
     ldi ZL, low(racer_row_1)
     ldi ZH, high(racer_row_1)
     
-    get_points
+;    get_points
     rjmp update_shift
 
 life_loss:
-	pop temp
-	ldi ZL, low(lives)
+    pop temp
+    ldi ZL, low(lives)
     ldi ZH, high(lives)
     ld temp, Z
     
     dec temp
     brne life_loss2
-	jmp game_over
+    jmp game_over
 life_loss2:
     st Z, temp
     
@@ -888,13 +906,13 @@ life_loss2:
     rjmp update_exit
 
 powerloss:
-	ldi temp2, ' '
-	sbiw Z, 1
-	st Z, temp2
-	rjmp update_shift_condition
+    ldi temp2, ' '
+    sbiw Z, 1
+    st Z, temp2
+    rjmp update_shift_condition
     
 update_exit:
-	pop temp2
-	pop temp
-	ret
+    pop temp2
+    pop temp
+    ret
     
