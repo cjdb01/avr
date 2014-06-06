@@ -181,6 +181,8 @@ increase_points:
     push ZH
     push temp
     
+    ldi ZL, low(level)
+    ldi ZH, high(level)
     ld temp, Z
     add score_low, temp
     adc score_high, 0
@@ -191,5 +193,31 @@ increase_points:
     ret
     
 obstacle_collision:
+    push ZL
+    push ZH
+    push temp
+    
+    ldi ZL, low(lives)
+    ldi ZH, high(lives)
+    ld temp, Z
+    dec temp
+    st Z, temp
+    
+    rcall reset_level
+    
+    pop temp
+    pop ZH
+    pop ZL
+    ret
+
 powerboost:
+    push ZL
+    push ZH
+    push temp
+    
+    ldi ZL, low
+    
+    pop temp
+    pop ZH
+    pop ZL
     ret
